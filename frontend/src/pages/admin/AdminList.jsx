@@ -44,11 +44,18 @@ export default function AdminList() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[22px] font-bold">제보·공백 목록</h1>
+        <div className="flex flex-wrap items-center gap-2">
+        <a href={api.ledgerUrl(filters)} download
+          className="flex min-h-11 items-center gap-2 rounded-[10px] border border-line bg-white px-4 text-sm font-semibold text-ink">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16" /></svg>
+          점검 대장 엑셀
+        </a>
         <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-semibold text-white">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" /></svg>
           CCTV 프레임 업로드
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files[0] && uploadCctv(e.target.files[0])} />
         </label>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {select('source', SOURCES)}
@@ -61,7 +68,7 @@ export default function AdminList() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-[13px] font-medium text-sub">
-              {['우선순위', '번호', '접수', '출처', '유형·규칙', 'AI 신뢰도', '담당', '상태', '기한', '오탐'].map((h) => <th key={h} className="whitespace-nowrap px-3.5 py-3 font-medium">{h}</th>)}
+              {['우선순위', '번호', '접수', '출처', '유형·규칙', 'AI 신뢰도', '담당', '주민 확인', '상태', '기한', '오탐'].map((h) => <th key={h} className="whitespace-nowrap px-3.5 py-3 font-medium">{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -80,6 +87,11 @@ export default function AdminList() {
                 </td>
                 <td className="whitespace-nowrap px-3.5 text-sub">{r.gap_rule ? '규칙' : (r.ai?.confidence != null ? `${r.ai.confidence}%` : '-')}</td>
                 <td className="whitespace-nowrap px-3.5 text-xs">{r.dept ?? '-'}</td>
+                <td className="whitespace-nowrap px-3.5 text-xs">
+                  {r.source === 'gap' ? '-' : r.cross_checked
+                    ? <span className="rounded bg-teal-100 px-1.5 py-0.5 font-semibold text-teal-800">교차확인 {r.confirm_count}명</span>
+                    : <span className="text-sub">{r.confirm_count ? `${r.confirm_count}명` : '-'}</span>}
+                </td>
                 <td className="whitespace-nowrap px-3.5"><span className={`rounded-full px-2 py-0.5 text-xs ${statusChip(r)}`}>{r.priority.overdue ? '기한 초과' : r.status_label}</span></td>
                 <td className={`whitespace-nowrap px-3.5 ${r.priority.overdue ? 'font-semibold text-red-700' : 'text-sub'}`}>
                   {r.priority.due_at ? new Date(r.priority.due_at).toLocaleDateString('ko-KR') : '-'}
@@ -92,6 +104,7 @@ export default function AdminList() {
       </div>
       {!rows.length && <p className="text-sub">항목 없음</p>}
       <p className="text-[13px] text-sub">공백 탐지 항목은 AI가 아니라 규칙으로 찾은 것입니다. 신뢰도 대신 "규칙"으로 표시합니다.</p>
+      <p className="text-[13px] text-sub">교차확인은 '나도 봤어요'가 3명 이상일 때 표시합니다. 로그인이 없어 브라우저 기준이라, 같은 사람이 여러 브라우저로 누르면 늘 수 있습니다. 엑셀은 위 필터를 그대로 반영하고 체험용 제보는 뺍니다.</p>
     </section>
   )
 }

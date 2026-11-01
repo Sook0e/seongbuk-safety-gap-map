@@ -10,6 +10,14 @@ import { myReports } from '../lib/myReports.js'
 // 와이어프레임 '주민 2 · 제보' 배치. 데이터 흐름(위 함수들)은 그대로. 시설 종류 선택은 와이어프레임에 없지만 담당 부서 배정에 필요해서 유지
 // 시설 종류로 담당 부서가 정해진다 (서버 규칙, docs/departments.md). 모르면 '모름' → 안전점검 총괄 부서
 // 체험용 사진: frontend/public/demo/sample.jpg (직접 찍은 사진만. AI-Hub 사진은 약관상 넣으면 안 됨)
+// 제보 예시 안내 4개 (멘토 지적: 주민이 무엇을 찍어야 하는지 분명하게). 소방용수는 주민이 신경 쓰는 대상이 아니라 넣지 않음
+const EXAMPLES = [
+  ['옹벽·축대 균열', '금이 가거나 벌어졌거나 배가 부른 곳'],
+  ['건물 외벽 균열', '벽이 갈라지거나 조각이 떨어지는 곳'],
+  ['보도·계단 파손', '깨지고 패여서 넘어질 수 있는 곳'],
+  ['흐려진 노면 표시', '횡단보도·정지선이 지워져 안 보이는 곳'],
+]
+
 export default function Report() {
   const [params] = useSearchParams()
   const isDemo = params.get('demo') === '1'
@@ -80,7 +88,19 @@ export default function Report() {
         {steps.map(([label, done]) => <div key={label} className={`h-1 rounded ${done ? 'bg-brand' : 'bg-gray-300'}`} />)}
       </div>
       <div className="flex justify-between text-xs text-sub">{steps.map(([label], i) => <span key={label}>{i + 1} {label}</span>)}</div>
-      <p className="text-xs text-sub">얼굴·차량 번호판이 나오지 않게 찍어 주세요. 사진 속 위치 정보(EXIF)는 지우고 저장합니다.</p>
+      <p className="text-xs text-sub">얼굴·차량 번호판이 나오지 않게, 길에서만 찍어 주세요. 사진 속 위치 정보(EXIF)는 지우고 저장합니다.</p>
+
+      <div>
+        <p className="mb-1.5 text-[13px] font-semibold">이런 걸 찍어 주세요</p>
+        <div className="grid grid-cols-2 gap-2">
+          {EXAMPLES.map(([title, desc]) => (
+            <div key={title} className="rounded-xl border border-line bg-white px-3 py-2.5">
+              <div className="text-[13px] font-semibold">{title}</div>
+              <div className="mt-0.5 text-xs leading-snug text-sub">{desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="relative flex min-h-[150px] flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gray-300 p-3">
         {preview && <img src={preview} alt="제보 사진" className="absolute inset-0 h-full w-full object-cover" />}
