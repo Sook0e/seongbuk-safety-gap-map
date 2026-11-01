@@ -162,7 +162,8 @@ def stats_text(plans, assign, items) -> str:
              "`poc/make_crack_patches.py` 결과. 개수만 적은 문서이며 이미지·라벨은 포함하지 않는다 (AI-Hub 약관).", "",
              f"- 원본 사진 {len(items):,}장 (옹벽 {sum(1 for i in items.values() if i['source'] == '옹벽'):,}, 샘플 {sum(1 for i in items.values() if i['source'] == '샘플'):,})",
              f"- 시설물 {len(set(i['facility'] for i in items.values()))}곳, 조각 {len(plans):,}개, 저장 크기 {PATCH}x{PATCH}",
-             f"- 사진 한 장에서 같은 클래스는 최대 {MAX_PER_IMAGE_CLASS}조각, 정상은 {NORMAL_PER_IMAGE}조각. 무작위 시드 {SEED}", "",
+             f"- 사진 한 장에서 같은 클래스는 최대 {MAX_PER_IMAGE_CLASS}조각, 정상은 {NORMAL_PER_IMAGE}조각. 무작위 시드 {SEED}",
+             f"- 자르는 범위: 라벨 상자의 {MARGIN}배, 한 변 최소 {MIN_SIDE}픽셀", "",
              "| 세트 | " + " | ".join(KOREAN[c] for c in CLASSES) + " | 합계 |",
              "| --- | " + " | ".join("---:" for _ in CLASSES) + " | ---: |"]
     for s in RATIO:
@@ -188,9 +189,16 @@ def stats_text(plans, assign, items) -> str:
 
 
 def main() -> None:
+    global MARGIN, MIN_SIDE, OUT, STATS
     ap = argparse.ArgumentParser()
     ap.add_argument("--plan", action="store_true", help="조각을 저장하지 않고 계획과 분할만 출력")
+    ap.add_argument("--margin", type=float, default=MARGIN, help="라벨 상자의 몇 배로 자를지 (기본 1.3, 주변 맥락을 더 넣으려면 키움)")
+    ap.add_argument("--min-side", type=int, default=MIN_SIDE, help="원본에서 자르는 한 변의 최소 크기(픽셀)")
+    ap.add_argument("--name", default="patches_v1", help="출력 폴더 이름 (data/raw/aihub/ 아래)")
+    ap.add_argument("--stats", default="ai_patch_stats.md", help="통계 문서 이름 (data/ 아래)")
     args = ap.parse_args()
+    MARGIN, MIN_SIDE = args.margin, args.min_side
+    OUT, STATS = AIHUB / args.name, ROOT / "data" / args.stats
 
     rng = random.Random(SEED)
     items = load_items()
