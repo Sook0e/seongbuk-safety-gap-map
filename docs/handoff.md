@@ -17,6 +17,7 @@
 | CCTV 프레임 업로드 (주민 사진과 같은 분류) | ✅ | `AdminList.jsx` | 관리자 목록 오른쪽 위 버튼 |
 | 주민 지도 '점검 필요(규칙)' 레이어 (사용불가 45 + 거리 기준 초과 의심 33) | ✅ | `backend/scripts/build_geojson.py`, `backend/data/gaps.geojson` | `/map` |
 | 통합 점검 후보 234곳 지도·목록·필터 | ✅ | `pages/admin/AdminIntegrated.jsx`, `GET /api/admin/integrated` | `/admin/integrated` |
+| AI 학습 실험 옵션(모델 4종 비교·균형 뽑기·강한 증강·4종 진단·무작위 분할 진단)과 평가 문서, 시설물별 결과 | ✅ | `poc/train_crack_classifier.py`, `poc/make_crack_patches.py`, `data/ai_eval_*.md`, `data/ai_facility_results.md` | `python poc/train_crack_classifier.py --help` (AI-Hub 원본이 있는 PC에서) |
 | 화면 7개 + 하단바 | 🟡 | `frontend/src/pages/` | 데이터 흐름은 동작. 10/25 주민 4화면(첫 화면·제보·지도·내 제보)·하단바·관리자 목록·관리자 틀을 와이어프레임 배치로 다시 그림. **관리자 대시보드·상세·통합 후보·보고서는 아직 임시 모양**. 색·글꼴은 디자인 시안이 나오면 `index.css`의 `@theme` 값 |
 | 우선순위 점수 v1, 목록 우선순위 정렬(기본), 상세 '규칙이 매긴 점수' 항목별 표시, 조치 기한·기한 초과 | ✅ | `backend/app/scoring.py`, `components/PriorityCard.jsx` | 관리자 상세 가운데 칸 |
 | 공백 항목 97건 관리자 목록 적재 (사용불가 45 + 좌표 누락·이상 19 + 거리 기준 33) | ✅ | `backend/app/seed.py`, `backend/data/gap_items.json` | 목록 출처 '공백 탐지' |
