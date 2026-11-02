@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 
 ROOT = Path(__file__).resolve().parent.parent
-PATCHES = ROOT / "data" / "raw" / "aihub" / "patches_v1"
+PATCHES = ROOT / "data" / "raw" / "aihub" / "patches_v1"      # 아래 main()에서 --patches로 바뀜
 MODEL_DIR = ROOT / "data" / "raw" / "aihub" / "model_v1"
 EVAL_MD = ROOT / "data" / "ai_eval.md"
 
@@ -39,7 +39,13 @@ MEAN, STD = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 
 class Patches(Dataset):
     def __init__(self, split: str, tf, limit: int | None = None, seed: int = 0):
-        rows = [r for r in csv.DictReader(open(PATCHES / "manifest.csv", encoding="utf-8-sig")) if r["split"] == split]
+        allrows = [r for r in csv.DictReader(open(PATCHES / "manifest.csv", encoding="utf-8-sig")) if r["class"] in CLASSES]
+        if RANDOM_SPLIT:  # 진단용: 시설물을 무시하고 조각을 섞어서 70/15/15 (같은 시설물이 양쪽에 들어가 점수가 부풀려짐)
+            order = np.random.default_rng(0).permutation(len(allrows))
+            cut = (int(len(allrows) * 0.70), int(len(allrows) * 0.85))
+            for k, i in enumerate(order):
+                allrows[i] = dict(allrows[i], split="train" if k < cut[0] else "val" if k < cut[1] else "test")
+        rows = [r for r in allrows if r["split"] == split]
         if limit:
             rng = np.random.default_rng(seed)
             rows = [rows[i] for i in rng.permutation(len(rows))[:limit]]
@@ -57,9 +63,25 @@ class Patches(Dataset):
         return [CLASSES.index(r["class"]) for r in self.rows]
 
 
+ARCH = "small"
+RANDOM_SPLIT = False
+ARCH_NAME = {"small": "MobileNetV3-Small", "large": "MobileNetV3-Large", "resnet18": "ResNet18", "efficientnet_b0": "EfficientNet-B0"}
+
+
 def build_model() -> nn.Module:
-    m = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
-    m.classifier[3] = nn.Linear(m.classifier[3].in_features, len(CLASSES))
+    """ImageNet 사전학습 가중치를 받아 마지막 분류층만 5종으로 바꾼다."""
+    if ARCH in ("small", "large"):
+        if ARCH == "large":
+            m = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.DEFAULT)
+        else:
+            m = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
+        m.classifier[3] = nn.Linear(m.classifier[3].in_features, len(CLASSES))
+    elif ARCH == "resnet18":
+        m = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        m.fc = nn.Linear(m.fc.in_features, len(CLASSES))
+    else:
+        m = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
+        m.classifier[1] = nn.Linear(m.classifier[1].in_features, len(CLASSES))
     return m
 
 
@@ -107,8 +129,11 @@ def write_eval(y, p, history, args, onnx_info, n_train) -> None:
     cm = confusion_matrix(y, p, labels=range(len(CLASSES)))
     L = ["# AI 분류 모델 평가 (시험 세트)", "",
          "`poc/train_crack_classifier.py` 결과. 숫자만 적은 문서이며 이미지·모델 파일은 올리지 않는다 (AI-Hub 약관).", "",
-         f"- 모델: MobileNetV3-Small(ImageNet 사전학습) 미세조정, 입력 224x224, CPU 학습. 학습 조각 {n_train:,}개, 회차 {args.epochs}, 무작위 시드 {args.seed}",
-         f"- 시험 조각 {len(y):,}개 (학습에 쓰지 않았고, 회차 고르기에도 쓰지 않음). 같은 시설물의 조각은 학습과 섞이지 않음",
+         f"- 모델: {ARCH_NAME[ARCH]}(ImageNet 사전학습) 미세조정, 입력 224x224, CPU 학습. 학습 조각 {n_train:,}개, 회차 {args.epochs}, 무작위 시드 {args.seed}",
+         f"- 조각 폴더 {args.patches}, 이름표 {args.tag}, 클래스 균형 뽑기 {'사용' if args.balanced else '사용 안 함 (손실 가중치)'}",
+         f"- 증강 {'강하게(밝기·대비·채도 ±50%, 흑백 25%, 자동 대비, 선명도)' if args.strong_aug else '기본'}",
+         f"- 클래스 {len(CLASSES)}종 ({', '.join(KO[c] for c in CLASSES)}), 분할 방식 {'무작위 (진단용, 시설물 섞임)' if RANDOM_SPLIT else '시설물 단위'}",
+         f"- 시험 조각 {len(y):,}개 (학습에 쓰지 않았고, 회차 고르기에도 쓰지 않음). " + ("진단용 무작위 분할이라 같은 시설물의 조각이 학습과 섞여 있음. 발표 숫자로 쓰지 않음" if RANDOM_SPLIT else "같은 시설물의 조각은 학습과 섞이지 않음"),
          f"- 전체 정확도 {rep['accuracy']:.1%}, 클래스별 재현율 평균 {rep['macro avg']['recall']:.1%}, F1 평균 {rep['macro avg']['f1-score']:.3f}", "",
          "| 클래스 | 정밀도 | 재현율 | F1 | 시험 조각 수 |", "| --- | ---: | ---: | ---: | ---: |"]
     for c in CLASSES:
@@ -129,7 +154,15 @@ def write_eval(y, p, history, args, onnx_info, n_train) -> None:
 
 
 def main() -> None:
+    global PATCHES, MODEL_DIR, EVAL_MD, ARCH, CLASSES, RANDOM_SPLIT
     ap = argparse.ArgumentParser()
+    ap.add_argument("--patches", default="patches_v1", help="조각 폴더 이름 (data/raw/aihub/ 아래)")
+    ap.add_argument("--tag", default="v1", help="결과 이름표: model_<tag>/, ai_eval_<tag>.md (v1이면 기존 이름)")
+    ap.add_argument("--balanced", action="store_true", help="클래스마다 같은 비율로 뽑기 (손실 가중치는 끔)")
+    ap.add_argument("--arch", choices=list(ARCH_NAME), default="small", help="모델 (small/large는 MobileNetV3 크기, 그 밖에 resnet18, efficientnet_b0)")
+    ap.add_argument("--drop", default="", help="학습·평가에서 뺄 클래스 (예: efflorescence_leak)")
+    ap.add_argument("--random-split", action="store_true", help="진단용: 시설물 구분 없이 무작위로 70/15/15 (발표 숫자로 쓰지 않음)")
+    ap.add_argument("--strong-aug", action="store_true", help="색·밝기·흑백·선명도를 크게 흔들어 시설물마다 다른 색 차이에 덜 흔들리게 함")
     ap.add_argument("--epochs", type=int, default=6)
     ap.add_argument("--batch", type=int, default=64)
     ap.add_argument("--lr", type=float, default=1e-3)
@@ -137,26 +170,41 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=20261025)
     ap.add_argument("--smoke", action="store_true", help="조각 일부로 1회차만 돌려 동작 확인 (결과 문서는 만들지 않음)")
     args = ap.parse_args()
+    ARCH = args.arch
+    RANDOM_SPLIT = args.random_split
+    CLASSES = [c for c in CLASSES if c not in args.drop.split(",")]
+    PATCHES = ROOT / "data" / "raw" / "aihub" / args.patches
+    MODEL_DIR = ROOT / "data" / "raw" / "aihub" / f"model_{args.tag}"
+    EVAL_MD = ROOT / "data" / ("ai_eval.md" if args.tag == "v1" else f"ai_eval_{args.tag}.md")
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     torch.set_num_threads(os.cpu_count() or 4)
 
+    jitter = transforms.ColorJitter(0.5, 0.5, 0.5, 0.08) if args.strong_aug else transforms.ColorJitter(0.25, 0.25, 0.2)
+    extra = [transforms.RandomGrayscale(0.25), transforms.RandomAutocontrast(0.3), transforms.RandomAdjustSharpness(2.0, 0.3)] if args.strong_aug else []
     train_tf = transforms.Compose([transforms.RandomResizedCrop(224, scale=(0.7, 1.0)), transforms.RandomHorizontalFlip(),
-                                   transforms.RandomVerticalFlip(), transforms.ColorJitter(0.25, 0.25, 0.2),
+                                   transforms.RandomVerticalFlip(), jitter, *extra,
                                    transforms.ToTensor(), transforms.Normalize(MEAN, STD)])
     eval_tf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(MEAN, STD)])
     lim = (384, 128, 128) if args.smoke else (None, None, None)
     if args.smoke:
         args.epochs = 1
     tr, va, te = Patches("train", train_tf, lim[0], args.seed), Patches("val", eval_tf, lim[1], args.seed), Patches("test", eval_tf, lim[2], args.seed)
-    tl = DataLoader(tr, batch_size=args.batch, shuffle=True, num_workers=args.workers)
+    if args.balanced:  # 클래스마다 같은 확률로 뽑아 드문 클래스(백태·누수, 박리, 철근 노출)를 자주 보게 함
+        from torch.utils.data import WeightedRandomSampler
+        lab = np.array(tr.labels())
+        per = 1.0 / np.bincount(lab, minlength=len(CLASSES)).clip(1)
+        sampler = WeightedRandomSampler(torch.tensor(per[lab], dtype=torch.double), num_samples=len(lab), replacement=True)
+        tl = DataLoader(tr, batch_size=args.batch, sampler=sampler, num_workers=args.workers)
+    else:
+        tl = DataLoader(tr, batch_size=args.batch, shuffle=True, num_workers=args.workers)
     vl = DataLoader(va, batch_size=128, num_workers=args.workers)
     el = DataLoader(te, batch_size=128, num_workers=args.workers)
     print(f"조각 train {len(tr):,} / val {len(va):,} / test {len(te):,}", flush=True)
 
     # 드문 클래스(철근 노출)를 더 크게 세는 가중치: 개수의 제곱근에 반비례
     cnt = np.bincount(tr.labels(), minlength=len(CLASSES)).clip(1)
-    w = torch.tensor((cnt.max() / cnt) ** 0.5, dtype=torch.float32)
+    w = torch.ones(len(CLASSES)) if args.balanced else torch.tensor((cnt.max() / cnt) ** 0.5, dtype=torch.float32)
     print("클래스별 학습 조각 수", dict(zip([KO[c] for c in CLASSES], cnt.tolist())), "손실 가중치", [round(float(x), 2) for x in w], flush=True)
 
     model = build_model()
