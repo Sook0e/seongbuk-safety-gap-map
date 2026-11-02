@@ -7,6 +7,7 @@ import { resizeImage } from '../../lib/image.js'
 
 // 관리자 3 상세: AI가 본 것 / 규칙이 매긴 점수 / 사람의 결정 세 칸 + 처리 이력
 const STATUSES = { received: '접수', review: '검토', action: '조치', done: '완료' }
+const CATEGORIES = ['콘크리트 균열', '박리', '백태/누수', '철근 노출', '기타']
 
 export default function AdminDetail() {
   const { id } = useParams()
@@ -56,6 +57,14 @@ export default function AdminDetail() {
             {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <label className="text-sm"><input type="checkbox" checked={r.dispatch} onChange={(e) => save({ dispatch: e.target.checked })} /> 현장 출동</label>
+          {!r.gap_rule && (
+            <label className="flex flex-col gap-1 text-xs text-gray-500">AI와 다르면 실제 유형 (모아 두었다가 다시 학습에 씁니다)
+              <select value={r.true_category ?? ''} onChange={(e) => save({ true_category: e.target.value })} className="rounded border p-1 text-sm text-ink">
+                <option value="">AI 분류 그대로</option>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+          )}
           <label className="text-sm"><input type="checkbox" checked={r.false_positive} onChange={(e) => save({ false_positive: e.target.checked })} /> AI 오탐</label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="처리 메모" className="rounded border p-1 text-sm" />
           <button type="button" onClick={() => save({ note })} disabled={!note} className="rounded border py-1 text-sm disabled:opacity-40">메모 남기기</button>

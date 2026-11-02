@@ -34,6 +34,7 @@
 | dept_note | 글 | 주민에게 보이는 담당 부서 메모 |
 | dispatch | 참/거짓 | 현장 출동 |
 | false_positive | 참/거짓 | AI 오탐 표시. 지도에서 숨김 |
+| true_category | 문자 | 담당자가 고른 실제 유형. AI 분류가 틀렸을 때 정답으로 모음 (재학습·프롬프트 예시용) |
 | is_demo | 참/거짓 | 체험용 사진으로 만든 제보 |
 | confirm_count | 정수 | 같은 곳 확인 인원 (우선순위 +5/명, 최대 +20) |
 | gap_key | 문자, 고유 | 공백 항목 중복 적재 방지 (예: `hydrant_unusable:4655`) |

@@ -37,7 +37,7 @@ def report(r: Report, admin: bool = False) -> dict:
     if admin:
         out |= {"id": r.id, "updated_at": utc(r.updated_at), "source": r.source,
                 "source_label": SOURCES.get(r.source, r.source),
-                "dispatch": r.dispatch, "false_positive": r.false_positive, "is_demo": r.is_demo,
+                "dispatch": r.dispatch, "false_positive": r.false_positive, "true_category": r.true_category, "is_demo": r.is_demo,
                 "gap_rule": r.gap_rule, "gap_reason": r.gap_reason,
                 "priority": scoring.score(r)}
     return out

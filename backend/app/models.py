@@ -56,6 +56,7 @@ class Report(Base):
     dept_note: Mapped[str | None] = mapped_column(Text)                   # 주민에게 보이는 담당 부서 메모
     dispatch: Mapped[bool] = mapped_column(Boolean, default=False)        # 현장 출동 여부
     false_positive: Mapped[bool] = mapped_column(Boolean, default=False)  # AI 오탐 표시
+    true_category: Mapped[str | None] = mapped_column(String(20))         # 담당자가 고른 실제 유형 (AI 분류와 다를 때). 재학습·프롬프트 예시용
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)         # 체험용 사진으로 만든 제보
     confirm_count: Mapped[int] = mapped_column(Integer, default=0)        # 같은 곳 확인(나도 봤어요) 인원, 우선순위 3 기능
 
