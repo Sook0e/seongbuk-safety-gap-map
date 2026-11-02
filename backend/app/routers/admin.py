@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from .. import ledger, scoring, screening, serialize
-from ..constants import KST, STATUSES
+from ..constants import CATEGORIES, KST, STATUSES
 from ..db import get_db
 from ..models import Photo, Report, StatusHistory, now
 from ..schemas import AdminReportCreate, AdminReportOut, AdminSummary, ReportUpdate
