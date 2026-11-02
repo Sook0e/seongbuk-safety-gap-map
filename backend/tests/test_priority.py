@@ -167,3 +167,11 @@ def test_low_confidence_needs_review_without_penalty():
     assert any(i["label"].startswith("AI 불확실") and i["points"] == 0 for i in low["items"])
     client.patch(f"/api/admin/reports/{item['id']}", json={"false_positive": True})
     assert client.get(f"/api/admin/reports/{item['id']}").json()["priority"]["needs_review"] is False
+
+
+def test_true_category_saved_validated_and_cleared():
+    item = admin_item(make(*FAR)["public_id"])
+    url = f"/api/admin/reports/{item['id']}"
+    assert client.patch(url, json={"true_category": "박리"}).json()["true_category"] == "박리"
+    assert client.patch(url, json={"true_category": "없는 유형"}).status_code == 400
+    assert client.patch(url, json={"true_category": ""}).json()["true_category"] is None

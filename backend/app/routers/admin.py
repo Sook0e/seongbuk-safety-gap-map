@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from .. import ledger, scoring, screening, serialize
-from ..constants import KST, STATUSES
+from ..constants import CATEGORIES, KST, STATUSES
 from ..db import get_db
 from ..models import Photo, Report, StatusHistory, now
 from ..schemas import AdminReportCreate, AdminReportOut, AdminSummary, ReportUpdate
@@ -102,6 +102,11 @@ def update(report_id: int, body: ReportUpdate, db: Session = Depends(get_db)):
         raise HTTPException(400, f"status는 {list(STATUSES)} 중 하나")
     if body.after_photo_key and not db.get(Photo, body.after_photo_key):
         raise HTTPException(400, "after_photo_key에 해당하는 사진이 없음")
+
+    if body.true_category is not None:
+        if body.true_category and body.true_category not in CATEGORIES:
+            raise HTTPException(400, f"true_category는 {CATEGORIES} 중 하나")
+        r.true_category = body.true_category or None
 
     dept_changed = body.dept is not None and body.dept != r.dept
     if dept_changed:  # 재배정은 처리 이력에 남긴다

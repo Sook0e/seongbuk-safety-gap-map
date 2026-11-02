@@ -101,6 +101,7 @@ class AdminReportOut(ReportOut):
     source_label: str
     dispatch: bool
     false_positive: bool
+    true_category: str | None = None
     is_demo: bool
     gap_rule: str | None = Field(None, description="공백 탐지 항목의 규칙 이름")
     gap_reason: str | None = None
@@ -146,3 +147,4 @@ class ReportUpdate(BaseModel):
     dept_note: str | None = Field(None, description="주민 내 제보에 보이는 담당 부서 메모")
     dispatch: bool | None = None
     false_positive: bool | None = None
+    true_category: str | None = Field(None, description="담당자가 확인한 실제 유형 (constants.CATEGORIES). 빈 문자열이면 지움")
