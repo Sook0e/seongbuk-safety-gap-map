@@ -91,10 +91,10 @@
 | GET | `/api/admin/reports` | 목록. 쿼리: `source`, `status`, `category`, `include_demo`(기본 true), `sort=priority`(기본)/`new`/`old` |
 | POST | `/api/admin/reports` | CCTV 프레임 등 직접 등록. `{photo_key, source: "cctv"/"gap", lat?, lon?, ...}` |
 | GET | `/api/admin/reports/{id}` | 상세 |
-| PATCH | `/api/admin/reports/{id}` | 보낸 항목만 변경: `status, note, after_photo_key, dept, dept_note, dispatch, false_positive`. 부서를 바꾸면 이력에 '담당 부서 변경' |
+| PATCH | `/api/admin/reports/{id}` | 보낸 항목만 변경: `status, note, after_photo_key, dept, dept_note, dispatch, false_positive, true_category`(실제 유형, 빈 문자열이면 지움). 부서를 바꾸면 이력에 '담당 부서 변경' |
 | GET | `/api/admin/report?start=YYYY-MM-DD&end=YYYY-MM-DD` | 기간별 보고서 (한국 날짜, 기본 이번 달). `summary_lines`(고정 양식 문장), `counts`, `by_dept`, `top_open`. 체험 제보 제외 |
 
-- 관리자 응답(`AdminReportOut`) = 주민 응답 + `id, updated_at, source, source_label, dispatch, false_positive, is_demo, gap_rule, gap_reason, priority`.
+- 관리자 응답(`AdminReportOut`) = 주민 응답 + `id, updated_at, source, source_label, dispatch, false_positive, true_category, is_demo, gap_rule, gap_reason, priority`.
 - `priority` = 규칙 점수 (`backend/app/scoring.py`, 값은 docs/decisions.md):
 ```json
 {"total": 50, "urgent": false, "due_at": "2026-10-26T14:20:56Z", "overdue": false, "needs_review": false,
