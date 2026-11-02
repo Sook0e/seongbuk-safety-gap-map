@@ -45,6 +45,7 @@ export const api = {
   adminReports: (params = {}) => request(`/api/admin/reports?${new URLSearchParams(params)}`),
   adminReport: (id) => request(`/api/admin/reports/${id}`),
   adminUpdate: (id, body) => request(`/api/admin/reports/${id}`, json('PATCH', body)),
+  ledgerUrl: (params = {}) => `/api/admin/ledger.xlsx?${new URLSearchParams(params)}`, // 점검 대장 엑셀 (a 태그 href로 바로 내려받기)
   adminCreate: (body) => request('/api/admin/reports', json('POST', body)),
   adminSummary: () => request('/api/admin/summary'),
   adminIntegrated: () => request('/api/admin/integrated'), // 통합 점검 후보 (공백 아님)

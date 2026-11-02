@@ -73,6 +73,7 @@ class ReportOut(BaseModel):
     dept: str | None = Field(None, description="담당 부서 (규칙 1차 배정 → 담당자 수정 가능)")
     dept_note: str | None
     confirm_count: int = Field(0, description="같은 곳 확인(나도 봤어요) 인원")
+    cross_checked: bool = Field(False, description="확인 인원이 CROSS_CHECK_MIN(3명) 이상이면 true. 로그인이 없어 브라우저 기준")
     history: list[HistoryOut]
 
 

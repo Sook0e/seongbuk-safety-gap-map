@@ -22,10 +22,10 @@
 | 메서드 | 주소 | 응답 |
 | --- | --- | --- |
 | GET | `/api/facilities` | GeoJSON. `properties: {kind: 소방용수/무더위쉼터/AED/어린이보호구역, name, address}` |
-| GET | `/api/gaps` | 주민 지도 '점검 필요(규칙)': 소방용수 사용불가 + 거리 기준 초과 의심. GeoJSON `properties: {rule, reason, address, kinds[]}`. **AI가 아니라 규칙 결과** → 화면에 "규칙"으로 표시 |
+| GET | `/api/gaps` | (11/2부터 주민 지도에서는 쓰지 않음, 관리자 목록과 통합 점검에만 남김) 소방용수 '점검 필요(규칙)': 소방용수 사용불가 + 거리 기준 초과 의심. GeoJSON `properties: {rule, reason, address, kinds[]}`. **AI가 아니라 규칙 결과** → 화면에 "규칙"으로 표시 |
 | GET | `/api/zones` | 보호구역 경계 (경찰청 API). GeoJSON. 경계가 있으면 `MultiPolygon`, 없으면 `Point`(시설 위치). `properties: {name, kind: 어린이/노인·장애인, has_boundary, point:[경도,위도], address}`. 주민 지도에 얇은 선으로 그림 |
 | GET | `/api/admin/integrated` | 관리자용 통합 점검 후보(같은 주소에 안전시설 2종 이상). 형식은 위와 같음. 공백이 아님 |
-| GET | `/api/reports/map?include_demo=false` | **주민 제보만**. GeoJSON `properties: {public_id, source, status, status_label, category, facility_label, confirm_count, created_at}`. 오탐 제외 |
+| GET | `/api/reports/map?include_demo=false` | **주민 제보만**. GeoJSON `properties: {public_id, source, status, status_label, category, facility_label, confirm_count, cross_checked, created_at}`. 오탐 제외 |
 
 `/api/facilities`, `/api/gaps`, `/api/admin/integrated` 는 `backend/data/*.geojson` 을 그대로 내보낸다 (`python backend/scripts/build_geojson.py` 로 생성). `/api/zones`는 `backend/data/zones.geojson` (`python backend/scripts/build_zones.py` 로 생성, 원본은 `data/raw/보호구역_성북구.json`).
 
@@ -64,7 +64,7 @@
 | 메서드 | 주소 | 설명 |
 | --- | --- | --- |
 | POST | `/api/reports` | 제보 보내기. 본문 `{photo_key, lat?, lon?, address?, memo?(200자), is_demo?, facility_type?}`. 시설 종류로 담당 부서 1차 배정 (`docs/departments.md`) |
-| POST | `/api/reports/{public_id}/confirm` | 나도 봤어요(+1). `confirm_count` +1 → 우선순위 1명당 +5(최대 +20). 중복 방지는 브라우저에서만 |
+| POST | `/api/reports/{public_id}/confirm` | 나도 봤어요(+1). `confirm_count` +1 → 우선순위 1명당 +5(최대 +20). 응답에 `cross_checked`(3명 이상이면 true, `constants.CROSS_CHECK_MIN`). 로그인이 없어 중복 방지는 브라우저에서만 → 한 사람이 여러 브라우저로 누르면 늘 수 있음 |
 | GET | `/api/reports?ids=a,b,c` | 내 제보 목록 (최대 50개). `ids`는 브라우저에 저장한 `public_id` |
 | GET | `/api/reports/{public_id}` | 제보 1건 |
 
@@ -77,7 +77,7 @@
   "lat": 37.589, "lon": 127.016, "address": null, "memo": "옹벽에 금",
   "photo_url": "/api/photos/....jpg", "after_photo_url": "/api/photos/....jpg",
   "ai": { ... 위와 같음 ... },
-  "facility_type": "stairs", "facility_label": "계단", "dept": "도로과 도로시설팀", "confirm_count": 0,
+  "facility_type": "stairs", "facility_label": "계단", "dept": "도로과 도로시설팀", "confirm_count": 0, "cross_checked": false,
   "dept_note": "도로과 보수 완료",
   "history": [{"at": "...", "from_status": null, "to_status": "received", "to_status_label": "접수", "note": "제보 접수", "photo_url": null}]
 }
@@ -89,6 +89,7 @@
 | 메서드 | 주소 | 설명 |
 | --- | --- | --- |
 | GET | `/api/admin/reports` | 목록. 쿼리: `source`, `status`, `category`, `include_demo`(기본 true), `sort=priority`(기본)/`new`/`old` |
+| GET | `/api/admin/ledger.xlsx` | **점검 대장 엑셀**. 목록과 같은 쿼리(`source`, `status`, `category`, `sort`) + `include_demo`(기본 false). 사진·주민 메모는 넣지 않음. 열: 접수번호, 접수일시, 출처, 유형·규칙, AI 신뢰도, 담당 부서, 위치, 위도·경도, 우선순위 점수, 처리 상태, 조치 기한, 기한 초과, 완료일시, 담당자 메모, 주민 확인, 교차확인, 오탐 |
 | POST | `/api/admin/reports` | CCTV 프레임 등 직접 등록. `{photo_key, source: "cctv"/"gap", lat?, lon?, ...}` |
 | GET | `/api/admin/reports/{id}` | 상세 |
 | PATCH | `/api/admin/reports/{id}` | 보낸 항목만 변경: `status, note, after_photo_key, dept, dept_note, dispatch, false_positive`. 부서를 바꾸면 이력에 '담당 부서 변경' |

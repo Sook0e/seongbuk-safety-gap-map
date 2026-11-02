@@ -15,7 +15,10 @@
 | 주민 제보 저장, 내 제보 조회, 빨간 점 | ✅ | `routers/reports.py`, `frontend/src/lib/myReports.js` | 아래 시연 흐름 |
 | 관리자 목록·상세·상태 변경·메모·조치 후 사진·오탐·출동 | ✅ | `routers/admin.py` | 아래 시연 흐름 |
 | CCTV 프레임 업로드 (주민 사진과 같은 분류) | ✅ | `AdminList.jsx` | 관리자 목록 오른쪽 위 버튼 |
-| 주민 지도 '점검 필요(규칙)' 레이어 (사용불가 45 + 거리 기준 초과 의심 33) | ✅ | `backend/scripts/build_geojson.py`, `backend/data/gaps.geojson` | `/map` |
+| 점검 대장 엑셀 내려받기 (관리자 목록, 필터 그대로 반영, 체험 제외) | ✅ | `backend/app/ledger.py`, `GET /api/admin/ledger.xlsx`, `AdminList.jsx` | 관리자 목록 오른쪽 위 '점검 대장 엑셀' |
+| 주민 교차확인 표시 ('나도 봤어요' 3명 이상). 로그인이 없어 브라우저 기준 | ✅ | `constants.CROSS_CHECK_MIN`, `AdminList.jsx`, `AdminDetail.jsx`, `MapPage.jsx` | 제보 하나에 '나도 봤어요' 3번 → 목록에 '교차확인 3명' |
+| 제보 화면 '이런 걸 찍어 주세요' 예시 4개 | ✅ | `Report.jsx` | `/report` |
+| 주민 지도 '점검 필요(규칙)' 레이어 (사용불가 45 + 거리 기준 초과 의심 33) | ⛔ 11/2 주민 지도에서 뺌 (소방용수는 주민이 신경 쓰는 정보가 아님, 멘토 지적). 관리자 목록에는 그대로 | `backend/scripts/build_geojson.py`, `backend/data/gaps.geojson` | `/map` |
 | 통합 점검 후보 234곳 지도·목록·필터 | ✅ | `pages/admin/AdminIntegrated.jsx`, `GET /api/admin/integrated` | `/admin/integrated` |
 | 화면 7개 + 하단바 | 🟡 | `frontend/src/pages/` | 데이터 흐름은 동작. 10/25 주민 4화면(첫 화면·제보·지도·내 제보)·하단바·관리자 목록·관리자 틀을 와이어프레임 배치로 다시 그림. **관리자 대시보드·상세·통합 후보·보고서는 아직 임시 모양**. 색·글꼴은 디자인 시안이 나오면 `index.css`의 `@theme` 값 |
 | 우선순위 점수 v1, 목록 우선순위 정렬(기본), 상세 '규칙이 매긴 점수' 항목별 표시, 조치 기한·기한 초과 | ✅ | `backend/app/scoring.py`, `components/PriorityCard.jsx` | 관리자 상세 가운데 칸 |
