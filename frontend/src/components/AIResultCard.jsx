@@ -21,7 +21,9 @@ export default function AIResultCard({ ai, highlight = false }) {
       )}
       {ai.reason && <p className="text-sm">{ai.reason}</p>}
       <p className="rounded-lg bg-page px-2.5 py-2 text-[13px]">담당자가 사진을 보고 최종 판단합니다</p>
-      {ai.mock && <p className="text-xs text-amber-700">임시 결과(Mock): AI 키가 없거나 호출에 실패함</p>}
+      {ai.mock
+        ? <p className="text-xs text-amber-700">임시 결과(Mock): AI 키가 없거나 호출에 실패함</p>
+        : <p className="text-xs text-sub">외부 AI(Claude)가 사진을 보고 분류한 결과입니다. 직접 학습한 모델은 아직 서비스에 연결하지 않았습니다.</p>}
     </div>
   )
 }
