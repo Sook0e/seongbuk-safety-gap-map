@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from .. import scoring, screening, serialize
-from ..constants import CATEGORIES, KST, STATUSES
+from .. import ledger, scoring, screening, serialize
+from ..constants import KST, STATUSES
 from ..db import get_db
 from ..models import Photo, Report, StatusHistory, now
 from ..schemas import AdminReportCreate, AdminReportOut, AdminSummary, ReportUpdate
@@ -22,6 +22,10 @@ def list_reports(source: str | None = None, status: str | None = None, category:
                  include_demo: bool = True, sort: str = "priority", db: Session = Depends(get_db)):
     """관리자 목록. 필터: source(resident/gap/cctv), status, category.
     sort: priority(기본, 점수 높은 순 → 같으면 최신) / new / old. 오탐은 점수 0이라 뒤로 감."""
+    return _filtered(db, source, status, category, include_demo, sort)
+
+
+def _filtered(db: Session, source, status, category, include_demo, sort) -> list[dict]:
     q = select(Report).options(selectinload(Report.history), selectinload(Report.photo))
     if source:
         q = q.where(Report.source == source)
@@ -34,8 +38,18 @@ def list_reports(source: str | None = None, status: str | None = None, category:
     q = q.order_by(Report.created_at.asc() if sort == "old" else Report.created_at.desc())
     rows = [serialize.report(r, admin=True) for r in db.scalars(q)]
     if sort == "priority":
-        rows.sort(key=lambda x: x["priority"]["total"], reverse=True)  # 안정 정렬이라 같은 점수는 최신순 유지
+        rows.sort(key=lambda x: x["priority"]["total"], reverse=True)
     return rows
+
+
+@router.get("/ledger.xlsx")
+def ledger_xlsx(source: str | None = None, status: str | None = None, category: str | None = None,
+                include_demo: bool = False, sort: str = "priority", db: Session = Depends(get_db)):
+    """점검 대장 엑셀. 목록과 같은 필터를 쓴다. 체험용(is_demo) 제보는 기본으로 뺀다. 사진·개인 정보는 넣지 않는다."""
+    rows = ledger.rows_from(_filtered(db, source, status, category, include_demo, sort))
+    stamp = datetime.now(KST).strftime("%Y%m%d")
+    return Response(ledger.to_xlsx(rows), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename=ledger_{stamp}.xlsx; filename*=UTF-8''%EC%A0%90%EA%B2%80%EB%8C%80%EC%9E%A5_{stamp}.xlsx"})
 
 
 @router.get("/summary", response_model=AdminSummary)

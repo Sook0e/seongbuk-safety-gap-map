@@ -40,7 +40,11 @@ export default function AdminDetail() {
             ? <div className="text-sm"><p className="text-gray-500">AI 판단 없음 — 공공데이터 규칙으로 찾은 항목</p><p className="mt-2 font-semibold">{r.gap_rule}</p><p>{r.gap_reason}</p><p className="text-gray-500">{r.address}</p></div>
             : <AIResultCard ai={r.ai} />}
           {r.memo && <p className="mt-2 text-sm">{r.source === 'gap' ? r.memo : `주민 메모: ${r.memo}`}</p>}
-          {r.confirm_count > 0 && <p className="text-sm text-gray-600">같은 곳 확인 {r.confirm_count}명</p>}
+          {r.confirm_count > 0 && (
+            <p className="text-sm text-gray-600">같은 곳 확인 {r.confirm_count}명
+              {r.cross_checked && <span className="ml-1 rounded bg-teal-100 px-1.5 py-0.5 text-xs font-semibold text-teal-800">교차확인</span>}
+              <span className="block text-xs text-gray-400">로그인이 없어 브라우저 기준입니다</span></p>
+          )}
         </div>
         <div className="rounded-lg bg-white p-4">
           <h2 className="mb-2 font-semibold">규칙이 매긴 점수</h2>

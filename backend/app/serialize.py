@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from . import departments, scoring, storage
-from .constants import SOURCES, STATUSES
+from .constants import CROSS_CHECK_MIN, SOURCES, STATUSES
 from .models import Report
 
 
@@ -32,7 +32,8 @@ def report(r: Report, admin: bool = False) -> dict:
         "photo_url": _url(r.photo_key), "after_photo_url": _url(after),
         "ai": r.photo.ai if r.photo else None, "facility_type": r.facility_type,
         "facility_label": departments.facility_label(r.facility_type), "dept": r.dept,
-        "dept_note": r.dept_note, "confirm_count": r.confirm_count or 0, "history": history,
+        "dept_note": r.dept_note, "confirm_count": r.confirm_count or 0,
+        "cross_checked": (r.confirm_count or 0) >= CROSS_CHECK_MIN, "history": history,
     }
     if admin:
         out |= {"id": r.id, "updated_at": utc(r.updated_at), "source": r.source,

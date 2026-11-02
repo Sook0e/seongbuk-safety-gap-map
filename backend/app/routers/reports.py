@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from .. import departments, serialize
-from ..constants import KST, STATUSES
+from ..constants import CROSS_CHECK_MIN, KST, STATUSES
 from ..db import get_db
 from ..models import Photo, Report, StatusHistory
 from ..schemas import PublicStats, ReportCreate, ReportOut
@@ -65,6 +65,7 @@ def reports_map(include_demo: bool = False, db: Session = Depends(get_db)) -> di
                              "status_label": STATUSES.get(r.status, r.status), "category": r.ai_category,
                              "facility_label": departments.facility_label(r.facility_type),
                              "confirm_count": r.confirm_count or 0,
+                             "cross_checked": (r.confirm_count or 0) >= CROSS_CHECK_MIN,
                              "created_at": serialize.utc(r.created_at).isoformat()}}
              for r in db.scalars(q)]
     return {"type": "FeatureCollection", "features": feats}
