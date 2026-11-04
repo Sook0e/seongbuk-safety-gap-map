@@ -62,7 +62,7 @@ export default function AdminDetail() {
           </select>
           <label className="text-sm"><input type="checkbox" checked={r.dispatch} onChange={(e) => save({ dispatch: e.target.checked })} /> 현장 출동</label>
           {!r.gap_rule && (
-            <label className="flex flex-col gap-1 text-xs text-gray-500">AI와 다르면 실제 유형 (모아 두었다가 다시 학습에 씁니다)
+            <label className="flex flex-col gap-1 text-xs text-gray-500">AI와 다르면 실제 유형 (모아 두었다가 나중에 학습·프롬프트 예시에 씁니다)
               <select value={r.true_category ?? ''} onChange={(e) => save({ true_category: e.target.value })} className="rounded border p-1 text-sm text-ink">
                 <option value="">AI 분류 그대로</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
