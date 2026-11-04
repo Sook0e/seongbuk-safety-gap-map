@@ -1,18 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
 import { myReports } from '../lib/myReports.js'
 
 // 주민 4 내 제보: 상태 진행, 제보 사진과 조치 후 사진, 담당 부서 메모.
 // 이 화면을 열면 '확인한 시각'을 저장해 하단바 빨간 점이 꺼진다.
+// 화면을 열어 둔 채로 담당자가 처리해도 바뀌도록 15초마다, 그리고 다른 앱에서 돌아올 때 다시 불러온다
+// (하단바 빨간 점 확인 주기와 같은 15초. 푸시 알림은 만들지 않음).
+const REFRESH_MS = 15000
+
 export default function MyReports() {
   const [list, setList] = useState(null)
   const [error, setError] = useState('')
+  const loaded = useRef(false)
 
   useEffect(() => {
-    api.myReports(myReports.ids())
-      .then((r) => { setList(r); myReports.markSeen() })
-      .catch((e) => setError(e.message))
+    let alive = true
+    const load = () => api.myReports(myReports.ids())
+      .then((r) => {
+        if (!alive) return
+        setList(r)
+        setError('')
+        loaded.current = true
+        // 새 소식이 있을 때만 확인 시각을 갱신 (매번 저장하면 하단바가 그때마다 다시 조회함)
+        if (myReports.hasNews(r)) myReports.markSeen()
+      })
+      .catch((e) => { if (alive && !loaded.current) setError(e.message) }) // 이미 보이는 목록이 있으면 새로고침 실패는 조용히 넘김
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+
+    load()
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') load() }, REFRESH_MS)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { alive = false; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
   if (error) return <p className="p-5 text-danger">불러오기 실패: {error}</p>
