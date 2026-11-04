@@ -55,12 +55,13 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="dashboard-page flex flex-col gap-6">
+      <div><p className="eyebrow">SEONGBUK SAFETY MAP</p><h1 className="text-2xl font-bold">우리 동네 안전 현황</h1><p className="mt-2 text-sm text-sub">주민 제보와 데이터 점검 대상을 한곳에서 확인하세요.</p></div>
       {newCount > 0 && (
         <div className="rounded bg-amber-50 p-3 text-sm">접수 대기 제보 {newCount}건 · <Link to="/admin/reports?status=received" className="underline">확인하기</Link></div>
       )}
       <Screening s={summary?.screening} />
-      <div className="grid grid-cols-5 gap-3">
+      <div className="dashboard-stats grid grid-cols-5 gap-3">
         {cards.map(([k, v]) => (
           <div key={k} className="rounded-lg bg-white p-4 shadow-sm"><div className="break-keep text-sm text-gray-500">{k}</div><div className="break-keep text-2xl font-semibold">{v ?? '—'}</div></div>
         ))}

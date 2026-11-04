@@ -1,3 +1,4 @@
+import Brand from '../components/Brand.jsx'
 import { useEffect, useRef, useState } from 'react'
 import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
@@ -36,14 +37,15 @@ export default function MyReports() {
 
   if (error) return <p className="p-5 text-danger">불러오기 실패: {error}</p>
   if (!list) return <p className="p-5">불러오는 중…</p>
-  if (!list.length) return <section className="min-h-full bg-page p-5 pt-12"><h1 className="text-[22px] font-bold">내 제보</h1><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p></section>
+  if (!list.length) return <section className="min-h-full bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p></section>
 
-  const chip = (st) => (st === 'done' ? 'bg-teal-100 text-teal-800' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
+  const chip = (st) => (st === 'done' ? 'bg-[#EBEFCB] text-brand' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
   return (
-    <section className="flex min-h-full flex-col gap-3.5 bg-page px-5 pb-6 pt-12 text-ink">
-      <h1 className="text-[22px] font-bold">내 제보</h1>
+    <section className="flex min-h-full flex-col gap-3.5 bg-page px-5 pb-6 pt-6 text-ink">
+      <header className="resident-header"><Brand /><h1>내 제보</h1></header>
+      <p className="text-sm text-sub">이 브라우저에서 보낸 제보 <strong className="text-brand">{list.length}건</strong></p>
       {list.map((r) => (
-        <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-teal-700' : 'border border-line'}`}>
+        <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-brand' : 'border border-line'}`}>
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
               <span className="text-base font-semibold">{r.ai?.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>

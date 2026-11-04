@@ -1,3 +1,4 @@
+import Brand from '../components/Brand.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AIResultCard from '../components/AIResultCard.jsx'
@@ -76,14 +77,10 @@ export default function Report() {
 
   const steps = [['사진', !!photo], ['위치', !!pos], ['확인', !!photo]]
   return (
-    <section className="flex min-h-full flex-col gap-3 bg-page px-5 pb-6 pt-11 text-ink">
-      <div className="flex items-center justify-between">
-        <Link to="/" aria-label="뒤로" className="flex h-11 w-11 items-center">
+    <section className="flex min-h-full flex-col gap-3 bg-page px-5 pb-6 pt-6 text-ink report-page">
+      <header className="resident-header"><div className="flex items-center gap-1"><Link to="/" aria-label="뒤로" className="flex h-11 w-8 shrink-0 items-center">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-        </Link>
-        <div className="text-[17px] font-semibold">제보하기{isDemo && <span className="ml-1 text-sm text-amber-600">(체험)</span>}</div>
-        <div className="w-11" />
-      </div>
+        </Link><Brand /></div><h1>제보하기{isDemo && <span className="ml-1 text-sm text-amber-600">(체험)</span>}</h1></header>
       <div className="grid grid-cols-3 gap-1.5">
         {steps.map(([label, done]) => <div key={label} className={`h-1 rounded ${done ? 'bg-brand' : 'bg-gray-300'}`} />)}
       </div>
@@ -118,7 +115,7 @@ export default function Report() {
 
       <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
         <div className="flex items-center gap-2.5 text-sm">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#001A47" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
           <span className="flex-1">{locText}</span>
         </div>
         <PinPicker value={pos} onChange={(p) => { setPos(p); setLocState('manual') }} />

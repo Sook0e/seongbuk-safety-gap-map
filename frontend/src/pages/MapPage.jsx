@@ -8,7 +8,7 @@ import { myReports } from '../lib/myReports.js'
 // 주민 3 지도. 필터: 전체 / 주민 제보 / 조치 완료. 소방용수 '점검 필요' 점은 주민이 신경 쓰는 정보가 아니라(멘토 지적) 이 화면에서 뺐고 관리자 목록에만 남김 (docs/decisions.md). 하단 시트에 선택 항목 요약.
 // 배경 타일 설정은 lib/map.js (OSM 표준 타일, 출처 표기 필수)
 const CENTER = [37.5894, 127.0167]
-const COLORS = { received: '#f59e0b', review: '#3b82f6', action: '#8b5cf6', done: '#16a34a' }
+const COLORS = { received: '#9CA3AF', review: '#BFD300', action: '#BFD300', done: '#001A47' }
 const FILTERS = [['all', '전체'], ['resident', '주민 제보'], ['done', '조치 완료']]
 const LEGEND = [['received', '접수'], ['review', '검토·조치 중'], ['done', '조치 완료']]
 
@@ -75,7 +75,7 @@ export default function MapPage() {
             className={`h-[34px] rounded-full px-3 text-[13px] ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>{label}</button>
         ))}
       </div>
-      <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-[11px]">
+      <div className={`absolute ${p ? 'bottom-[280px]' : 'bottom-3'} right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-[11px]`}>
         {LEGEND.map(([k, label]) => (
           <div key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: COLORS[k] }} />{label}</div>
         ))}

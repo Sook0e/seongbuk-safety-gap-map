@@ -32,7 +32,7 @@ export default function AdminDetail() {
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-xl font-bold">#{r.id} · {r.source_label} · {r.status_label}</h1>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="detail-grid grid grid-cols-3 gap-4">
         <div className="rounded-lg bg-white p-4">
           <h2 className="mb-2 font-semibold">AI가 본 것</h2>
           {r.photo_url && <img src={r.photo_url} alt="제보 사진" className="mb-2 rounded" />}

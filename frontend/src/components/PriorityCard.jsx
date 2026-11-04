@@ -4,8 +4,8 @@ export default function PriorityCard({ priority }) {
   const { total, items, urgent, due_at: dueAt, overdue } = priority
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold">{total}</span><span className="text-sm text-gray-500">점</span>
+      <div className="flex flex-wrap items-baseline gap-2 rounded-xl bg-[#EBEFCB] p-4">
+        <span className="text-4xl font-bold">{total}</span><span className="text-sm text-gray-500">점</span>
         {urgent && <span className="rounded bg-danger px-2 text-xs text-white">우선</span>}
         {priority.needs_review && <span className="rounded bg-amber-100 px-2 text-xs text-amber-800">AI 불확실 · 확인 필요</span>}
       </div>
