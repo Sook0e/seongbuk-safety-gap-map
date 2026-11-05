@@ -1,13 +1,7 @@
 @import "tailwindcss";
 @font-face{
-  font-family:Noto;
-  src:url('/fonts/NotoSansKR.ttf');
-  font-weight:100 900;
-  font-display:swap;
-}
-@font-face{
   font-family:Allimjang;
-  src:url('/fonts/Allimjang-Bold.otf');
+  src:url('/fonts/Allimjang-Bold.woff2') format('woff2');
   font-weight:700;
   font-display:swap;
 }
@@ -24,7 +18,7 @@
   --color-ink:#001a47;
   --color-sub:#6b778c;
   --color-line:#d8dedf;
-  --font-sans:Noto,'Apple SD Gothic Neo',sans-serif;
+  --font-sans:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;
 }
 html,body,#root{
   height:100%;
@@ -54,7 +48,7 @@ button:not(:disabled),select{
   object-fit:contain;
 }
 .hero-heading{
-  font-family:Allimjang,Noto,sans-serif;
+  font-family:Allimjang,'Noto Sans KR',sans-serif;
   font-size:36px;
   line-height:1.2;
   font-weight:700;
