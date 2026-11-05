@@ -33,7 +33,7 @@ export default function AdminIntegrated() {
     shown.forEach((f) => {
       const [lon, lat] = f.geometry.coordinates
       const n = f.properties.kinds.length
-      L.circleMarker([lat, lon], { radius: 3 + n * 2, color: '#6d28d9', fillOpacity: 0.6, weight: 1 })
+      L.circleMarker([lat, lon], { radius: 3 + n * 2, color: '#001A47', fillOpacity: 0.6, weight: 1 })
         .bindPopup(`${f.properties.address}<br>${f.properties.kinds.join(' · ')}`).addTo(layer.current)
     })
   }, [shown])
@@ -52,7 +52,7 @@ export default function AdminIntegrated() {
           <option value="">전체 시설</option>{KINDS.map((k) => <option key={k} value={k}>{k} 포함</option>)}
         </select>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="integrated-grid grid grid-cols-2 gap-4">
         <div ref={el} className="h-[480px] rounded-lg" />
         <div className="h-[480px] overflow-y-auto rounded-lg bg-white">
           <table className="w-full text-sm">

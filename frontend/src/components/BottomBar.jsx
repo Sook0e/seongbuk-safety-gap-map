@@ -22,7 +22,7 @@ export default function BottomBar() {
   const item = ({ isActive }) => `flex w-24 flex-col items-center gap-1 pt-2 text-xs ${isActive ? 'font-semibold text-brand' : 'text-sub'}`
 
   return (
-    <nav aria-label="하단 메뉴" className="fixed inset-x-0 bottom-0 mx-auto flex h-[84px] max-w-md items-start justify-around border-t border-line bg-white">
+    <nav aria-label="하단 메뉴" className="resident-bottom-bar fixed inset-x-0 bottom-0 mx-auto flex h-[84px] max-w-md items-start justify-around border-t border-line bg-white">
       <NavLink to="/map" className={item}>
         <Icon><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" /><path d="M9 4v14M15 6v14" /></Icon>지도
       </NavLink>

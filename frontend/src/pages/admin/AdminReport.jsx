@@ -31,7 +31,7 @@ export default function AdminReport() {
 
   return (
     <section className="flex flex-col gap-4 bg-white p-6 print:p-0">
-      <div className="flex items-end gap-2 print:hidden">
+      <div className="flex flex-wrap items-end gap-2 print:hidden">
         <label className="text-sm">시작 <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="rounded border p-1" /></label>
         <label className="text-sm">끝 <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="rounded border p-1" /></label>
         <button type="button" onClick={load} className="rounded border px-3 py-1 text-sm">만들기</button>
@@ -47,7 +47,7 @@ export default function AdminReport() {
           <div className="flex flex-col gap-1">
             {rep.summary_lines.map((line) => <p key={line}>{line}</p>)}
           </div>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="report-tables grid grid-cols-3 gap-6">
             <Table title="출처별 접수" data={rep.counts.by_source} />
             <Table title="AI 판별 유형" data={rep.counts.by_category} />
             <Table title="시설 종류 (주민 선택)" data={rep.counts.by_facility} />
