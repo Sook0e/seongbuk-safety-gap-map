@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from . import departments, scoring, storage
-from .constants import CROSS_CHECK_MIN, RECHECK_DAYS, SOURCES, STATUSES
+from .constants import CROSS_CHECK_MIN, KST, RECHECK_DAYS, SEASONS, SOURCES, STALE_PHOTO_DAYS, STATUSES
 from .models import Report
 
 
@@ -46,6 +46,16 @@ def place_item(r: Report, relation: str, distance_m: int) -> dict:
             "fixed": fx, "not_fixed": nf}
 
 
+def photo_check(r: Report) -> dict:
+    """대표 사진 촬영일과 접수일의 차이. 촬영일이 없으면 판단하지 않는다(None). 점수에는 쓰지 않고 담당자가 참고만 한다."""
+    first = next((p for p in r.photos if p.position == 0), None)
+    taken = utc(first.taken_at) if first and first.taken_at else None
+    if taken is None:
+        return {"photo_age_days": None, "stale_photo": False}
+    days = (utc(r.created_at) - taken).days
+    return {"photo_age_days": max(days, 0), "stale_photo": days > STALE_PHOTO_DAYS}
+
+
 def report(r: Report, admin: bool = False) -> dict:
     history = [{"at": utc(h.created_at), "from_status": h.from_status, "to_status": h.to_status,
                 "to_status_label": STATUSES.get(h.to_status, h.to_status), "note": h.note,
@@ -72,5 +82,6 @@ def report(r: Report, admin: bool = False) -> dict:
                 "source_label": SOURCES.get(r.source, r.source),
                 "dispatch": r.dispatch, "false_positive": r.false_positive, "true_category": r.true_category, "is_demo": r.is_demo,
                 "gap_rule": r.gap_rule, "gap_reason": r.gap_reason,
-                "priority": scoring.score(r)}
+                "priority": scoring.score(r), "season": SEASONS.get(utc(r.created_at).astimezone(KST).month),
+                **photo_check(r)}
     return out

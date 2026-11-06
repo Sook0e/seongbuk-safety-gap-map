@@ -15,7 +15,23 @@ function write(key, value) {
   window.dispatchEvent(new Event('sbgap-my-reports'))
 }
 
+// 제보 작성 중 글(메모, 시설 종류, 사진 메모)을 임시로 저장한다. 앱이 꺼지거나 화면이 다시 열려도 날아가지 않게.
+// 사진은 저장하지 않는다(서버에 올라간 사진은 다시 고르면 됨). 글을 쓸 때마다 부르므로 하단바 갱신 이벤트는 보내지 않는다.
+const DRAFT = 'sbgap.reportDraft'
+const DRAFT_TTL_MS = 24 * 3600 * 1000 // 하루가 지난 임시저장은 버린다
+
 export const myReports = {
+  draft: () => {
+    const d = read(DRAFT, null)
+    return d && Date.now() - d.at < DRAFT_TTL_MS ? d : null
+  },
+  saveDraft: (d) => {
+    try {
+      if (!d.memo && !d.photoMemo && (!d.facility || d.facility === 'unknown')) localStorage.removeItem(DRAFT)
+      else localStorage.setItem(DRAFT, JSON.stringify({ ...d, at: Date.now() }))
+    } catch { /* 저장 불가 */ }
+  },
+  clearDraft: () => { try { localStorage.removeItem(DRAFT) } catch { /* 무시 */ } },
   clientKey: () => {
     let k = read(CLIENT, null)
     if (!k) {

@@ -43,6 +43,21 @@ export default function Report() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  const [draftBack, setDraftBack] = useState(false) // 임시저장을 불러온 상태
+  useEffect(() => {
+    const d = myReports.draft()
+    if (d) {
+      if (d.memo) setMemo(d.memo)
+      if (d.photoMemo) setPhotoMemo(d.photoMemo)
+      if (d.facility) setFacility(d.facility)
+      setDraftBack(!!(d.memo || d.photoMemo))
+    }
+  }, [])
+  // 글을 쓰는 대로 저장 (불러오기 전의 빈 값이 저장된 글을 지우지 않도록 첫 렌더 직후에는 건너뜀)
+  const [draftReady, setDraftReady] = useState(false)
+  useEffect(() => { setDraftReady(true) }, [])
+  useEffect(() => { if (draftReady) myReports.saveDraft({ memo, photoMemo, facility }) }, [memo, photoMemo, facility]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     currentPosition().then((p) => {
       if (p) { setPos(p); setLocState('auto') } else setLocState('failed')
@@ -98,6 +113,7 @@ export default function Report() {
         taken_at: mainTaken, photo_memo: photoMemo || null,
         extra_photos: extras.map((x) => ({ photo_key: x.key, memo: x.memo || null, taken_at: x.takenAt })),
       })
+      myReports.clearDraft()
       myReports.add(r.public_id)
       myReports.markSeen() // 방금 보낸 제보는 '새 소식'이 아님 → 빨간 점은 담당자가 처리할 때부터
       navigate('/my')
@@ -121,6 +137,7 @@ export default function Report() {
         {steps.map(([label, done]) => <div key={label} className={`h-1 rounded ${done ? 'bg-brand' : 'bg-gray-300'}`} />)}
       </div>
       <div className="flex justify-between text-[13px] text-sub">{steps.map(([label], i) => <span key={label}>{i + 1} {label}</span>)}</div>
+      {draftBack && <p className="rounded-lg bg-white px-3 py-2 text-[13px] text-sub">쓰던 글을 불러왔어요. 사진은 다시 골라 주세요.</p>}
       <p className="text-[13px] text-sub">얼굴·차량 번호판이 나오지 않게, 길에서만 찍어 주세요. 사진 속 위치 정보(EXIF)는 지우고 저장합니다.</p>
 
       <div>

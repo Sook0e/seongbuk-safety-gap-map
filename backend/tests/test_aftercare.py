@@ -133,3 +133,22 @@ def test_summary_aftercare_and_place_history():
     import zipfile
     sheet = zipfile.ZipFile(io.BytesIO(client.get("/api/admin/ledger.xlsx").content)).read("xl/worksheets/sheet1.xml").decode("utf-8")
     assert "재발" in sheet and "주민 재확인" in sheet and re.search(r"조치 후 \d+일 만에 재발", sheet)
+
+
+def test_stale_photo_and_season():
+    from datetime import datetime, timedelta, timezone
+    from backend.app.models import Report
+    p = make(37.6600, 127.1000)
+    item = admin_item(p["public_id"])
+    assert item["stale_photo"] is False and item["photo_age_days"] in (None, 0)
+    with SessionLocal() as db:
+        r = db.query(Report).filter(Report.public_id == p["public_id"]).one()
+        r.photos[0].taken_at = datetime.now(timezone.utc) - timedelta(days=constants.STALE_PHOTO_DAYS + 5)
+        r.created_at = datetime(2026, 3, 10, 3, 0, tzinfo=timezone.utc)  # 해빙기
+        r.photos[0].taken_at = r.created_at - timedelta(days=constants.STALE_PHOTO_DAYS + 5)
+        db.commit()
+    item = admin_item(p["public_id"])
+    assert item["stale_photo"] is True and item["photo_age_days"] == constants.STALE_PHOTO_DAYS + 5
+    assert item["season"] == "해빙기"
+    got = client.get("/api/admin/reports", params={"season": "해빙기"}).json()
+    assert p["public_id"] in {x["public_id"] for x in got} and all(x["season"] == "해빙기" for x in got)

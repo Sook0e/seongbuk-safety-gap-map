@@ -6,6 +6,7 @@ import { resizeImage } from '../../lib/image.js'
 // 관리자 2 목록: 출처·유형·상태 필터, 우선순위 정렬(기본), CCTV 프레임 업로드 (CCTV는 주민 사진과 같은 분류에 넣는 입력 채널)
 const SOURCES = { '': '전체 출처', resident: '주민', gap: '공백 탐지', cctv: 'CCTV' }
 const STATUSES = { '': '전체 상태', received: '접수', review: '검토', action: '조치', done: '완료' }
+const SEASONS = { '': '전체 시기', 해빙기: '해빙기(2~3월)', 우기: '우기(6~7월)', 동절기: '동절기(11~12월)' }
 const CATEGORIES = ['', '콘크리트 균열', '박리', '백태/누수', '철근 노출', '기타']
 
 export default function AdminList() {
@@ -61,6 +62,7 @@ export default function AdminList() {
         {select('source', SOURCES)}
         {select('status', STATUSES)}
         {select('category', Object.fromEntries(CATEGORIES.map((c) => [c, c || '전체 유형'])))}
+        {select('season', SEASONS)}
         {select('sort', { priority: '우선순위순', new: '최신순', old: '오래된순' })}
       </div>
       {msg && <p className="text-sm text-sub">{msg}</p>}
@@ -92,7 +94,7 @@ export default function AdminList() {
                     ? <span className="rounded bg-teal-100 px-1.5 py-0.5 font-semibold text-teal-800">교차확인 {r.confirm_count}명</span>
                     : <span className="text-sub">{r.confirm_count ? `${r.confirm_count}명` : '-'}</span>}
                 </td>
-                <td data-label="상태" className="whitespace-nowrap px-3.5"><span className={`rounded-full px-2 py-0.5 text-xs ${statusChip(r)}`}>{r.priority.overdue ? '기한 초과' : r.status_label}</span>{r.aftercare?.recurrence && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">재발</span>}{r.aftercare?.recheck_due && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">재점검</span>}</td>
+                <td data-label="상태" className="whitespace-nowrap px-3.5"><span className={`rounded-full px-2 py-0.5 text-xs ${statusChip(r)}`}>{r.priority.overdue ? '기한 초과' : r.status_label}</span>{r.season && <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-sub">{r.season}</span>}{r.stale_photo && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">오래된 사진</span>}{r.aftercare?.recurrence && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">재발</span>}{r.aftercare?.recheck_due && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">재점검</span>}</td>
                 <td data-label="기한" className={`whitespace-nowrap px-3.5 ${r.priority.overdue ? 'font-semibold text-red-700' : 'text-sub'}`}>
                   {r.priority.due_at ? new Date(r.priority.due_at).toLocaleDateString('ko-KR') : '-'}
                 </td>

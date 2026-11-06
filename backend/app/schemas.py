@@ -163,6 +163,9 @@ class AdminReportOut(ReportOut):
     gap_rule: str | None = Field(None, description="공백 탐지 항목의 규칙 이름")
     gap_reason: str | None = None
     priority: Priority
+    season: str | None = Field(None, description="접수 달 기준 계절 점검 시기(해빙기 2~3월, 우기 6~7월, 동절기 11~12월. 팀 가정)")
+    photo_age_days: int | None = Field(None, description="대표 사진 촬영일이 접수일보다 며칠 앞서는지. 촬영일 정보가 없으면 null")
+    stale_photo: bool = Field(False, description="photo_age_days가 STALE_PHOTO_DAYS 초과(옛 사진 재사용 의심). 점수에는 반영하지 않음")
 
 
 class Screening(BaseModel):

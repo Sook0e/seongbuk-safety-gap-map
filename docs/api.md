@@ -123,3 +123,4 @@
 - `GET /api/admin/summary`: `aftercare{reopened, recurred, recheck_due}`.
 - `GET /api/admin/reports/{id}/place-history`: 같은 곳 이력(`relation`: self｜prior｜later｜nearby, 조치 전후 사진, 주민 확인 수).
 - 관리자 제보 응답 `aftercare`에 `recurrence{days_after_done, admin_id}`, `recheck_due`, `recheck_at`. 엑셀 대장에 '재발', '주민 재확인' 열.
+- 관리자 제보 응답에 `season`(해빙기·우기·동절기, 접수 달 기준), `photo_age_days`, `stale_photo`(대표 사진 촬영일이 접수일보다 `STALE_PHOTO_DAYS`일 넘게 앞섬). `GET /api/admin/reports`와 `ledger.xlsx`에 `season` 필터. 점수에는 반영하지 않음.

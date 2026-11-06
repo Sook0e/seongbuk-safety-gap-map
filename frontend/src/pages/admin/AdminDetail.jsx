@@ -54,6 +54,7 @@ export default function AdminDetail() {
           {r.gap_rule
             ? <div className="text-sm"><p className="text-gray-500">AI 판단 없음 — 공공데이터 규칙으로 찾은 항목</p><p className="mt-2 font-semibold">{r.gap_rule}</p><p>{r.gap_reason}</p><p className="text-gray-500">{r.address}</p></div>
             : <AIResultCard ai={r.ai} />}
+          {r.stale_photo && <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-sm">사진을 찍은 날이 접수일보다 {r.photo_age_days}일 앞서요. 옛 사진을 다시 올린 것일 수 있으니 확인해 주세요. 점수에는 반영하지 않았습니다.</p>}
           {r.memo && <p className="mt-2 text-sm">{r.source === 'gap' ? r.memo : `주민 메모: ${r.memo}`}</p>}
           {r.confirm_count > 0 && (
             <p className="text-sm text-gray-600">같은 곳 확인 {r.confirm_count}명
