@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import AIResultCard from '../../components/AIResultCard.jsx'
 import AftercarePanel from '../../components/AftercarePanel.jsx'
+import PhotoModal from '../../components/PhotoModal.jsx'
 import PriorityCard from '../../components/PriorityCard.jsx'
 import { api } from '../../lib/api.js'
 import { resizeImage } from '../../lib/image.js'
@@ -16,6 +17,7 @@ export default function AdminDetail() {
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState('')
   const [depts, setDepts] = useState([])
+  const [viewer, setViewer] = useState(null) // 크게 보는 사진 {src, title}
 
   useEffect(() => { api.adminReport(id).then(setR).catch((e) => setMsg(e.message)) }, [id])
   useEffect(() => { api.meta().then((m) => setDepts(m.departments)).catch(() => {}) }, [])
@@ -103,10 +105,11 @@ export default function AdminDetail() {
         <h2 className="mb-2 font-semibold">처리 이력</h2>
         <ol className="flex flex-col gap-1 text-sm">
           {r.history.map((h, i) => (
-            <li key={i}>{new Date(h.at).toLocaleString('ko-KR')} · {h.to_status_label}{h.note && ` · ${h.note}`}{h.photo_url && <> · <a href={h.photo_url} className="underline">사진</a></>}</li>
+            <li key={i}>{new Date(h.at).toLocaleString('ko-KR')} · {h.to_status_label}{h.note && ` · ${h.note}`}{h.photo_url && <> · <button type="button" onClick={() => setViewer({ src: h.photo_url, title: `${h.to_status_label} · 조치 후 사진` })} className="underline">사진 보기</button></>}</li>
           ))}
         </ol>
       </div>
+      <PhotoModal src={viewer?.src} title={viewer?.title} onClose={() => setViewer(null)} />
     </section>
   )
 }
