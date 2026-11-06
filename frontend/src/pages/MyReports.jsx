@@ -77,7 +77,7 @@ export default function MyReports() {
         const ac = r.aftercare ?? { fixed: 0, not_fixed: 0, recurrence: null }
         const mine = myReports.vote(r.public_id)
         const photos = (r.photos?.length ? r.photos : [{ photo_url: r.photo_url }]).filter((p) => p.photo_url)
-        const compare = r.status === 'done' && r.photo_url && r.after_photo_url
+        const compare = r.photo_url && r.after_photo_url // 조치 후 사진이 올라오면 완료 처리 전이라도 바로 전·후를 비교해 볼 수 있게
         return (
           <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-brand' : 'border border-line'}`}>
             <div className="flex items-center justify-between">
