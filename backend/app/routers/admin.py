@@ -1,18 +1,18 @@
 """관리자(담당자) 화면용 API. 로그인은 만들지 않는다 (CLAUDE.md 만들지 않는 것)."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from .. import ledger, scoring, screening, serialize
-from ..constants import CATEGORIES, KST, STATUSES
+from ..constants import AFTERCARE_RADIUS_M, CATEGORIES, KST, RECHECK_DAYS, STATUSES
 from ..db import get_db
-from ..models import Photo, Report, StatusHistory, now
-from ..schemas import AdminReportCreate, AdminReportOut, AdminSummary, ReportUpdate
-from .reports import create_report
+from ..models import Photo, Report, ReportLink, StatusHistory, now
+from ..schemas import AdminReportCreate, AdminReportOut, AdminSummary, PlaceHistoryItem, ReportUpdate
+from .reports import _meters, create_report
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -26,7 +26,8 @@ def list_reports(source: str | None = None, status: str | None = None, category:
 
 
 def _filtered(db: Session, source, status, category, include_demo, sort) -> list[dict]:
-    q = select(Report).options(selectinload(Report.history), selectinload(Report.photo), selectinload(Report.photos))
+    q = select(Report).options(selectinload(Report.history), selectinload(Report.photo), selectinload(Report.photos),
+                               selectinload(Report.feedback), selectinload(Report.recurrence_link))
     if source:
         q = q.where(Report.source == source)
     if status:
@@ -56,7 +57,8 @@ def ledger_xlsx(source: str | None = None, status: str | None = None, category: 
 def summary(db: Session = Depends(get_db)):
     """대시보드 숫자. '오늘'·'이번 달'은 한국 시간 기준."""
     now = datetime.now(KST)
-    rows = db.scalars(select(Report).options(selectinload(Report.history))).all()
+    rows = db.scalars(select(Report).options(selectinload(Report.history), selectinload(Report.feedback),
+                                             selectinload(Report.recurrence_link))).all()
     reports = [r for r in rows if r.source != "gap"]
     today_new = sum(1 for r in reports if serialize.utc(r.created_at).astimezone(KST).date() == now.date())
     overdue = sum(1 for r in reports if scoring.score(r)["overdue"])
@@ -69,11 +71,53 @@ def summary(db: Session = Depends(get_db)):
             if t.astimezone(KST).strftime("%Y-%m") == now.strftime("%Y-%m"):
                 done_month += 1
     open_by_status = {k: sum(1 for r in rows if r.status == k) for k in STATUSES if k != "done"}
+    # 조치 완료 이후 사후 관리 건수 (체험·오탐 제외)
+    t = datetime.now(timezone.utc)
+    reopened = recheck_due = 0
+    live = [r for r in reports if not r.is_demo and not r.false_positive]
+    for r in live:
+        if r.status != "done":
+            continue
+        nf, fx = scoring.feedback_counts(r)
+        reopened += nf >= 1 and nf > fx
+        done = scoring.done_at(r)
+        recheck_due += bool(done and t >= done + timedelta(days=RECHECK_DAYS) and fx == 0)
+    aftercare = {"reopened": reopened, "recurred": sum(1 for r in live if r.recurrence_link is not None), "recheck_due": recheck_due}
     return {"today_new": today_new, "overdue_open": overdue, "done_this_month": done_month,
             "avg_days_to_done": round(sum(durations) / len(durations), 1) if durations else None,
             "open_by_status": open_by_status,
             "on_time": scoring.on_time(rows),
-            "screening": screening.screening([r for r in rows if not r.is_demo])}
+            "screening": screening.screening([r for r in rows if not r.is_demo]),
+            "aftercare": aftercare}
+
+
+@router.get("/reports/{rid}/place-history", response_model=list[PlaceHistoryItem])
+def place_history(rid: int, radius_m: int | None = None, db: Session = Depends(get_db)):
+    """같은 곳(반경 안, 같은 AI 유형)과 재발로 이어진 제보를 시간순으로. 조치 전후 사진과 '아직 그대로예요' 수를 함께 보여 준다."""
+    opts = (selectinload(Report.history), selectinload(Report.feedback), selectinload(Report.recurrence_link))
+    me = db.scalars(select(Report).options(*opts).where(Report.id == rid)).first()
+    if not me:
+        raise HTTPException(404, "제보 없음")
+    if me.lat is None or me.lon is None:
+        return [serialize.place_item(me, "self", 0)]
+    radius = radius_m or AFTERCARE_RADIUS_M
+    linked = {l.related_id for l in [me.recurrence_link] if l} | set(
+        db.scalars(select(ReportLink.report_id).where(ReportLink.related_id == me.id)))
+    q = select(Report).options(*opts).where(Report.source == "resident", Report.is_demo.is_(False),
+                                            Report.false_positive.is_(False), Report.lat.is_not(None), Report.lon.is_not(None))
+    items = []
+    for r in db.scalars(q):
+        d = _meters(me.lat, me.lon, r.lat, r.lon)
+        if r.id == me.id:
+            rel = "self"
+        elif r.id in linked:
+            rel = "prior" if r.created_at < me.created_at else "later"
+        elif d <= radius and r.ai_category == me.ai_category:
+            rel = "prior" if r.created_at < me.created_at else "later"
+        else:
+            continue
+        items.append(serialize.place_item(r, rel, round(d)))
+    return sorted(items, key=lambda x: x["created_at"])
 
 
 @router.post("/reports", response_model=AdminReportOut)

@@ -43,8 +43,10 @@ def test_school_zone_bonus_and_breakdown():
     near = admin_item(make(lat + 0.0005, lon)["public_id"])  # 약 55m
     far = admin_item(make(*FAR)["public_id"])
     base = scoring.TYPE_POINTS["콘크리트 균열"]  # Mock 분류 결과
-    assert far["priority"]["total"] == base
-    assert near["priority"]["total"] == base + scoring.SCHOOL_ZONE_POINTS
+    # 앞선 테스트가 같은 곳에서 완료 처리한 제보가 있으면 새 제보는 재발로 이어져 가산점이 붙는다 → 그 점수는 빼고 비교
+    rec = lambda x: sum(i["points"] for i in x["priority"]["items"] if i["label"].startswith("재발"))
+    assert far["priority"]["total"] - rec(far) == base
+    assert near["priority"]["total"] - rec(near) == base + scoring.SCHOOL_ZONE_POINTS
     labels = [i["label"] for i in near["priority"]["items"]]
     assert "어린이보호구역 인접" in labels and "관리목록 밖" in labels
 
