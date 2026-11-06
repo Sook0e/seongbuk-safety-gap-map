@@ -19,9 +19,9 @@ export default function PriorityCard({ priority }) {
       </ul>
       {dueAt
         ? <p className={`text-sm ${overdue ? 'font-semibold text-danger' : 'text-gray-600'}`}>
-            조치 기한 {new Date(dueAt).toLocaleDateString('ko-KR')}{overdue && ' · 기한 초과'}
+            조치 시작 기한 {new Date(dueAt).toLocaleDateString('ko-KR')}{overdue && ' · 기한 초과'}
           </p>
-        : <p className="text-xs text-gray-500">공백 후보는 조치 기한 없음</p>}
+        : <p className="text-xs text-gray-500">공백 후보는 조치 시작 기한 없음</p>}
       <p className="text-xs text-gray-400">점수 값은 팀 가정값 v1 (docs/decisions.md)</p>
     </div>
   )

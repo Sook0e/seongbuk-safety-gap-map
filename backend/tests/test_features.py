@@ -114,17 +114,17 @@ def test_on_time_rate():
     before = client.get("/api/admin/summary").json()["on_time"]
     fast = admin(report()["public_id"])  # 바로 완료 → 기한 안
     client.patch(f"/api/admin/reports/{fast['id']}", json={"status": "done"})
-    late = admin(report()["public_id"])  # 10일 전 접수, 미완료 → 기한 초과
+    late = admin(report()["public_id"])  # 20일 전 접수, 미완료 → 기한 초과
     with SessionLocal() as db:
         r = db.get(Report, late["id"])
-        r.created_at = r.created_at - timedelta(days=10)
+        r.created_at = r.created_at - timedelta(days=20)
         db.commit()
     after = client.get("/api/admin/summary").json()["on_time"]
     assert after["on_time"] == before["on_time"] + 1
     assert after["due_total"] == before["due_total"] + 2
     assert after["rate_pct"] == round(after["on_time"] / after["due_total"] * 100)
     lines = client.get("/api/admin/report").json()["summary_lines"]
-    assert any("기한 안에 조치를 마친 비율" in line for line in lines)
+    assert any("기한 안에 조치를 시작한 비율" in line for line in lines)
 
 
 def test_vision_parse_tolerates_extra_text():

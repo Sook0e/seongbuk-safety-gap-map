@@ -102,7 +102,7 @@ class Priority(BaseModel):
     total: int
     items: list[PriorityItem]
     urgent: bool = Field(description="URGENT_THRESHOLD 이상이면 기한이 짧아짐")
-    due_at: datetime | None = Field(None, description="조치 기한. 공백 후보(source=gap)는 없음")
+    due_at: datetime | None = Field(None, description="조치 시작 기한. 공백 후보(source=gap)는 없음")
     overdue: bool | None = Field(None, description="기한이 지났는데 완료가 아님")
     needs_review: bool = Field(False, description="AI 신뢰도가 기준(50) 미만 → '담당자 확인 필요' 표시. 점수에는 영향 없음")
 
@@ -132,7 +132,7 @@ class Screening(BaseModel):
 
 
 class OnTime(BaseModel):
-    on_time: int = Field(description="기한 안에 완료한 건")
+    on_time: int = Field(description="기한 안에 조치를 시작한 건")
     due_total: int = Field(description="기한이 지났거나 완료된 건 (판단 대상)")
     rate_pct: int | None = Field(None, description="on_time / due_total (%). 대상이 없으면 null")
 
@@ -143,7 +143,7 @@ class AdminSummary(BaseModel):
     done_this_month: int
     avg_days_to_done: float | None = Field(None, description="완료된 건의 접수→완료 평균 일수. 완료 건이 없으면 null")
     open_by_status: dict[str, int]
-    on_time: OnTime = Field(description="기한 내 조치율 (주민·CCTV 제보, 체험용·오탐 제외)")
+    on_time: OnTime = Field(description="기한 내 조치 시작률 (주민·CCTV 제보, 체험용·오탐 제외)")
     screening: Screening = Field(description="데이터 사전 점검 지표 (docs/benchmark.md)")
 
 
