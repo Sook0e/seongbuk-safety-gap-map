@@ -124,3 +124,5 @@
 - `GET /api/admin/reports/{id}/place-history`: 같은 곳 이력(`relation`: self｜prior｜later｜nearby, 조치 전후 사진, 주민 확인 수).
 - 관리자 제보 응답 `aftercare`에 `recurrence{days_after_done, admin_id}`, `recheck_due`, `recheck_at`. 엑셀 대장에 '재발', '주민 재확인' 열.
 - 관리자 제보 응답에 `season`(해빙기·우기·동절기, 접수 달 기준), `photo_age_days`, `stale_photo`(대표 사진 촬영일이 접수일보다 `STALE_PHOTO_DAYS`일 넘게 앞섬). `GET /api/admin/reports`와 `ledger.xlsx`에 `season` 필터. 점수에는 반영하지 않음.
+- `POST /api/reports` 본문에 `client_key?`(8~40자, 브라우저 무작위 값) 추가. 응답에는 나가지 않는다. 관리자 제보 응답에 `same_client_reports`(같은 브라우저 제보 수, 이 제보 포함), `same_client_24h`(그중 이 제보 전후 24시간 안). 식별값이 없으면 null.
+- 식별번호·별명: `POST /api/reports` 본문에 `client_nickname?`(20자) 추가. 관리자 제보 응답에 `client_code`(식별값 앞 8자리, 주민이 '내 제보' 화면에서 보는 번호와 같음), `client_nickname`. 식별값 전체는 어느 응답에도 나가지 않는다.
