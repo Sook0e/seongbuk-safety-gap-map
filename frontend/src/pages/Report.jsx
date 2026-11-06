@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AIResultCard from '../components/AIResultCard.jsx'
 import NearbyReports from '../components/NearbyReports.jsx'
+import PhotoGuide from '../components/PhotoGuide.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
 import PinPicker from '../components/PinPicker.jsx'
 import { takenAt } from '../lib/exif.js'
@@ -154,6 +155,8 @@ export default function Report() {
           ))}
         </div>
       </div>
+
+      <PhotoGuide />
 
       <div className="relative flex min-h-[150px] flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gray-300 p-3">
         {preview && <img src={preview} alt="제보 사진" className="absolute inset-0 h-full w-full object-cover" />}
