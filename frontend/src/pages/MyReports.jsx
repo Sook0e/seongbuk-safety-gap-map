@@ -39,7 +39,18 @@ export default function MyReports() {
   if (!list) return <p className="p-5">불러오는 중…</p>
   if (!list.length) return <section className="min-h-full bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p></section>
 
-  const chip = (st) => (st === 'done' ? 'bg-[#EBEFCB] text-brand' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
+  // 접수 후 경과일, 완료까지 걸린 일수, 처리 대상 아님 사유 (리뷰: '처리 상황도 이유도 모른다'는 불만 대응)
+  const days = (a, b = Date.now()) => Math.max(0, Math.floor((new Date(b).getTime() - new Date(a).getTime()) / 86400000))
+  const progress = (r) => {
+    if (r.status === 'done') {
+      const at = [...r.history].reverse().find((h) => h.to_status === 'done')?.at
+      const n = at ? days(r.created_at, at) : null
+      return n === null ? '조치 완료' : n === 0 ? '접수 당일 조치 완료' : `접수 후 ${n}일 만에 조치 완료`
+    }
+    const n = days(r.created_at)
+    return n === 0 ? '오늘 접수' : `접수 후 ${n}일째`
+  }
+  const chip = (st, notTarget) => (notTarget ? 'bg-gray-200 text-sub' : st === 'done' ? 'bg-[#EBEFCB] text-brand' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
   return (
     <section className="flex min-h-full flex-col gap-3.5 bg-page px-5 pb-6 pt-6 text-ink">
       <header className="resident-header"><Brand /><h1>내 제보</h1></header>
@@ -51,15 +62,17 @@ export default function MyReports() {
               <span className="text-base font-semibold">{r.ai?.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
               <span className="text-xs text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')} · 접수번호 {r.public_id}</span>
             </div>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${chip(r.status)}`}>{r.status_label ?? r.status}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${chip(r.status, r.not_target)}`}>{r.not_target ? '처리 대상 아님' : (r.status_label ?? r.status)}</span>
           </div>
-          <StatusSteps status={r.status} />
+          {r.not_target
+            ? <p className="rounded-lg bg-page px-3 py-2.5 text-[13px] leading-normal">담당자가 확인한 결과, 처리 대상이 아니라고 판단했습니다.{r.dept_note ? ` 이유: ${r.dept_note}` : ' 이유는 담당 부서에 문의해 주세요.'}</p>
+            : <><StatusSteps status={r.status} /><p className="text-[13px] font-medium text-brand">{progress(r)}</p></>}
           <div className="grid grid-cols-2 gap-2">
             {r.photo_url && <figure className="flex flex-col gap-1"><img src={r.photo_url} alt="제보 사진" className="h-24 w-full rounded-lg object-cover" /><figcaption className="text-xs text-sub">제보 사진</figcaption></figure>}
             {r.after_photo_url && <figure className="flex flex-col gap-1"><img src={r.after_photo_url} alt="조치 후 사진" className="h-24 w-full rounded-lg object-cover" /><figcaption className="text-xs text-sub">조치 후 사진</figcaption></figure>}
           </div>
           {r.dept && <p className="text-xs text-sub">담당: {r.dept}</p>}
-          {r.dept_note && <p className="rounded-lg bg-page px-3 py-2.5 text-[13px] leading-normal">{r.dept_note}</p>}
+          {!r.not_target && r.dept_note && <p className="rounded-lg bg-page px-3 py-2.5 text-[13px] leading-normal">{r.dept_note}</p>}
         </article>
       ))}
     </section>

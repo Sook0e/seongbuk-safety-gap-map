@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from math import asin, cos, radians, sin, sqrt
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -11,7 +12,7 @@ from .. import departments, serialize
 from ..constants import CROSS_CHECK_MIN, KST, STATUSES
 from ..db import get_db
 from ..models import Photo, Report, StatusHistory
-from ..schemas import PublicStats, ReportCreate, ReportOut
+from ..schemas import NearbyReport, PublicStats, ReportCreate, ReportOut
 
 router = APIRouter(tags=["reports"])
 
@@ -69,6 +70,30 @@ def reports_map(include_demo: bool = False, db: Session = Depends(get_db)) -> di
                              "created_at": serialize.utc(r.created_at).isoformat()}}
              for r in db.scalars(q)]
     return {"type": "FeatureCollection", "features": feats}
+
+
+def _meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """두 좌표 사이 거리(m). 하버사인."""
+    p1, p2 = radians(lat1), radians(lat2)
+    a = sin((p2 - p1) / 2) ** 2 + cos(p1) * cos(p2) * sin(radians(lon2 - lon1) / 2) ** 2
+    return 2 * 6371000 * asin(sqrt(a))
+
+
+@router.get("/api/reports/nearby", response_model=list[NearbyReport])
+def nearby_reports(lat: float, lon: float, category: str | None = None,
+                   radius_m: int = Query(50, ge=10, le=200), db: Session = Depends(get_db)):
+    """같은 곳에 이미 접수된 주민 제보(진행 상황 포함). 중복 제보를 줄이려고 제보 화면에서 보여 준다.
+    체험·오탐·공백 항목은 뺀다. category를 주면 AI 분류가 같은 것만. 가까운 순 최대 5건. 사진·메모는 넣지 않음."""
+    q = select(Report).where(Report.source == "resident", Report.is_demo.is_(False), Report.false_positive.is_(False),
+                             Report.lat.is_not(None), Report.lon.is_not(None))
+    if category:
+        q = q.where(Report.ai_category == category)
+    found = sorted(((_meters(lat, lon, r.lat, r.lon), r) for r in db.scalars(q)), key=lambda x: x[0])
+    return [{"public_id": r.public_id, "category": r.ai_category, "status": r.status,
+             "status_label": STATUSES.get(r.status, r.status), "created_at": serialize.utc(r.created_at),
+             "distance_m": round(d), "confirm_count": r.confirm_count or 0, "dept": r.dept,
+             "facility_label": departments.facility_label(r.facility_type)}
+            for d, r in found if d <= radius_m][:5]
 
 
 @router.get("/api/stats", response_model=PublicStats)

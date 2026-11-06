@@ -82,3 +82,25 @@ def test_bad_inputs():
     rid = client.post("/api/admin/reports", json={"photo_key": p["key"], "source": "cctv"}).json()["id"]
     assert client.patch(f"/api/admin/reports/{rid}", json={"status": "끝"}).status_code == 400
     assert client.get("/api/photos/..%2F..%2Fetc%2Fpasswd").status_code in (400, 404)
+
+
+def test_nearby_reports_and_not_target_flag():
+    """같은 곳 근처 제보만 나오고(체험·오탐 제외), 처리 대상 아님은 내 제보에서 구분된다."""
+    from .test_priority import make
+    base = (37.5900, 127.0200)
+    a = make(*base)
+    far = make(base[0] + 0.01, base[1])  # 약 1.1km 떨어짐
+    demo = make(*base, is_demo=True)
+    near = client.get("/api/reports/nearby", params={"lat": base[0], "lon": base[1] + 0.0002}).json()
+    ids = [x["public_id"] for x in near]
+    assert a["public_id"] in ids and far["public_id"] not in ids and demo["public_id"] not in ids
+    assert {"public_id", "category", "status", "status_label", "distance_m", "confirm_count"} <= set(near[0])
+    assert "memo" not in near[0] and "photo_url" not in near[0]
+    # 분류가 다르면 거른다
+    assert client.get("/api/reports/nearby", params={"lat": base[0], "lon": base[1], "category": "없는분류"}).json() == []
+    # 처리 대상 아님: 주민 내 제보에서는 구분돼 보이고, 근처 목록에서는 빠진다
+    rid = next(x["id"] for x in client.get("/api/admin/reports").json() if x["public_id"] == a["public_id"])
+    client.patch(f"/api/admin/reports/{rid}", json={"false_positive": True, "dept_note": "공사 중인 구간이라 대상이 아닙니다"})
+    mine = client.get("/api/reports", params={"ids": a["public_id"]}).json()[0]
+    assert mine["not_target"] is True and "공사" in mine["dept_note"]
+    assert a["public_id"] not in [x["public_id"] for x in client.get("/api/reports/nearby", params={"lat": base[0], "lon": base[1]}).json()]
