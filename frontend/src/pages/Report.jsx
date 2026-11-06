@@ -33,12 +33,11 @@ export default function Report() {
   const [facilityTypes, setFacilityTypes] = useState({})
   const [facility, setFacility] = useState('unknown')
   const [memo, setMemo] = useState('')
-  const [memoFromAI, setMemoFromAI] = useState(false) // 메모칸이 AI 초안으로 채워진 상태
+  const [aiDrafted, setAiDrafted] = useState(false) // 사진 메모 칸이 AI 초안으로 채워진 상태
   const [lastFile, setLastFile] = useState(null) // '다시 시도'용
   const [photoMemo, setPhotoMemo] = useState('')    // 대표 사진 메모
   const [mainTaken, setMainTaken] = useState(null)  // 대표 사진 촬영 일시
   const [extras, setExtras] = useState([])         // 추가 사진 [{key, preview, memo, takenAt}], 최대 3장
-  const [active, setActive] = useState(null)       // 메모를 적고 있는 사진 번호
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -73,14 +72,15 @@ export default function Report() {
       setPreview(URL.createObjectURL(blob))
       const up = await api.uploadPhoto(blob)
       setPhoto(up)
-      // 메모를 비워 둔 경우에만 AI가 본 내용으로 초안을 채운다 (임시 결과는 쓰지 않음). 주민이 고쳐서 보낼 수 있다.
-      if (!memo.trim() && up.ai && !up.ai.mock && up.ai.category) {
-        setMemo(`${up.ai.category} 사진입니다. ${up.ai.reason ?? ''}`.trim().slice(0, 200)); setMemoFromAI(true)
+      // 대표 사진 메모를 비워 둔 경우에만 AI가 본 내용으로 그 사진의 메모 초안을 채운다 (임시 결과는 쓰지 않음). 주민이 고쳐서 보낼 수 있다.
+      if (!photoMemo.trim() && up.ai && !up.ai.mock && up.ai.category) {
+        setPhotoMemo(`${up.ai.category} 사진입니다. ${up.ai.reason ?? ''}`.trim().slice(0, 200)); setAiDrafted(true)
       }
     } catch (e) { setError(`사진 처리 실패: ${e.message}`) } finally { setBusy(false) }
   }
 
-  // 사진 추가: AI 분류는 대표 사진만 하므로 추가 사진은 저장만 한다 (classify=false)
+  // 사진 추가: 추가 사진도 AI가 본 내용으로 사진 메모 초안을 채운다 (대표 사진과 같은 방식, 임시 결과는 쓰지 않음).
+  // 제보의 AI 분류와 우선순위는 대표 사진만 쓰고, 추가 사진의 AI 결과는 메모 초안에만 쓴다. 주민이 고쳐서 보낼 수 있다.
   async function addPhotos(files) {
     setError(''); setAdding(true)
     try {
@@ -88,15 +88,17 @@ export default function Report() {
       for (const file of files) {
         if (next.length >= 3) break
         const blob = await resizeImage(file)
-        const up = await api.uploadPhoto(blob, { classify: false })
-        next.push({ key: up.key, preview: URL.createObjectURL(blob), memo: '', takenAt: await takenAt(file) })
+        const up = await api.uploadPhoto(blob)
+        const draft = up.ai && !up.ai.mock && up.ai.category ? `${up.ai.category} 사진입니다. ${up.ai.reason ?? ''}`.trim().slice(0, 200) : ''
+        if (draft) setAiDrafted(true)
+        next.push({ key: up.key, preview: URL.createObjectURL(blob), memo: draft, takenAt: await takenAt(file) })
       }
       setExtras(next)
     } catch (e) { setError(`사진 추가 실패: ${e.message}`) } finally { setAdding(false) }
   }
   const stripItems = photo ? [{ key: 'main', preview, memo: photoMemo, takenAt: mainTaken }, ...extras] : []
   const setItemMemo = (i, v) => (i === 0 ? setPhotoMemo(v) : setExtras((l) => l.map((x, k) => (k === i - 1 ? { ...x, memo: v } : x))))
-  const removeItem = (i) => { setExtras((l) => l.filter((_, k) => k !== i - 1)); setActive(null) }
+  const removeItem = (i) => setExtras((l) => l.filter((_, k) => k !== i - 1))
 
   async function useDemoPhoto() {
     const res = await fetch('/demo/sample.jpg')
@@ -179,7 +181,7 @@ export default function Report() {
         {pos && <p className="text-[13px] text-sub">{pos.lat.toFixed(5)}, {pos.lon.toFixed(5)} · 핀을 끌어 옮길 수 있어요</p>}
       </div>
 
-      {photo && <PhotoStrip items={stripItems} active={active} onActive={setActive} onMemo={setItemMemo} onRemove={removeItem} onAdd={addPhotos} adding={adding} />}
+      {photo && <PhotoStrip items={stripItems} onMemo={setItemMemo} onRemove={removeItem} onAdd={addPhotos} adding={adding} aiDrafted={aiDrafted} />}
       {photo && <AIResultCard ai={photo.ai} highlight />}
       {photo && <NearbyReports pos={pos} accuracy={pos?.accuracy} category={photo.ai && !photo.ai.mock ? photo.ai.category : null} />}
 
@@ -195,10 +197,9 @@ export default function Report() {
         </div>
       </div>
 
-      <label className="flex flex-col gap-1.5 text-sm text-sub">한 줄 메모 (선택)
-        <input value={memo} onChange={(e) => { setMemo(e.target.value); setMemoFromAI(false) }} maxLength={200}
+      <label className="flex flex-col gap-1.5 text-sm text-sub">전체 한 줄 메모 (선택, 사진 전체에 대한 말)
+        <input value={memo} onChange={(e) => setMemo(e.target.value)} maxLength={200}
           placeholder="예: 비 온 뒤 금이 더 커졌어요" className="h-11 rounded-xl border border-line bg-white px-3 text-[15px] text-ink" />
-        {memoFromAI && <span className="text-[13px]">AI가 사진을 보고 쓴 초안이에요. 고쳐서 보내셔도 됩니다.</span>}
       </label>
 
       {error && <p className="text-sm text-danger">{error}</p>}
