@@ -6,7 +6,7 @@ import { resizeImage } from '../../lib/image.js'
 // 관리자 2 목록: 출처·유형·상태 필터, 우선순위 정렬(기본), CCTV 프레임 업로드 (CCTV는 주민 사진과 같은 분류에 넣는 입력 채널)
 const SOURCES = { '': '전체 출처', resident: '주민', gap: '공백 탐지', cctv: 'CCTV' }
 const STATUSES = { '': '전체 상태', received: '접수', review: '검토', action: '조치', done: '완료' }
-const SEASONS = { '': '전체 시기', 해빙기: '해빙기(2~3월)', 우기: '우기(6~7월)', 동절기: '동절기(11~12월)' }
+const SEASONS = { '': '전체 시기', 해빙기: '해빙기(2~3월)', 우기: '우기(5~6월)', 동절기: '동절기(11~12월)' }
 const CATEGORIES = ['', '콘크리트 균열', '박리', '백태/누수', '철근 노출', '기타']
 
 export default function AdminList() {
