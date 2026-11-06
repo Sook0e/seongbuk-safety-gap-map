@@ -124,3 +124,5 @@
 - `GET /api/admin/reports/{id}/place-history`: 같은 곳 이력(`relation`: self｜prior｜later｜nearby, 조치 전후 사진, 주민 확인 수).
 - 관리자 제보 응답 `aftercare`에 `recurrence{days_after_done, admin_id}`, `recheck_due`, `recheck_at`. 엑셀 대장에 '재발', '주민 재확인' 열.
 - 관리자 제보 응답에 `season`(해빙기·우기·동절기, 접수 달 기준), `photo_age_days`, `stale_photo`(대표 사진 촬영일이 접수일보다 `STALE_PHOTO_DAYS`일 넘게 앞섬). `GET /api/admin/reports`와 `ledger.xlsx`에 `season` 필터. 점수에는 반영하지 않음.
+- `GET /api/admin/corrections.csv` 담당자가 고친 AI 분류(실제 유형, 오탐)를 CSV로 내려받는다(엑셀용 UTF-8). 열: 접수번호, 접수일시, AI 유형, AI 신뢰도, 담당자가 고른 실제 유형, AI 오탐, AI와 일치, 사진 키. 체험 제보·수정하지 않은 제보는 빠지고, 이름·식별값·위치·메모는 넣지 않는다. AI 분류 개선용 평가 세트·프롬프트 예시 후보.
+- `GET /api/admin/corrections/summary` AI 유형 → 담당자가 고른 유형 쌍별 건수(`total`, `pairs[{ai, true, count, match}]`).

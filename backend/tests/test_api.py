@@ -132,3 +132,25 @@ def test_report_with_extra_photos_memo_and_taken_at():
     xlsx = client.get("/api/admin/ledger.xlsx").content
     sheet = ZipFile(BytesIO(xlsx)).read("xl/worksheets/sheet1.xml").decode("utf-8")
     assert "촬영 일시" in sheet and "사진 수" in sheet and "2026-11-06 14:03" in sheet
+
+
+def test_corrections_export_only_reviewed_and_no_personal_data():
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+    from .test_priority import make, admin_item
+    c = TestClient(app)
+    a = make(37.7000, 127.2000, client_key="device-priv9999")
+    b = make(37.7010, 127.2010)
+    c0 = make(37.7020, 127.2020)
+    ia, ib = admin_item(a["public_id"])["id"], admin_item(b["public_id"])["id"]
+    assert c.patch(f"/api/admin/reports/{ia}", json={"true_category": "박리"}).status_code == 200
+    assert c.patch(f"/api/admin/reports/{ib}", json={"false_positive": True}).status_code == 200
+    body = c.get("/api/admin/corrections.csv").content.decode("utf-8-sig")
+    lines = body.strip().splitlines()
+    assert lines[0].startswith("접수번호,") and len(lines) == 3          # 수정하지 않은 제보는 빠짐
+    assert str(ia) in body and str(ib) in body and str(admin_item(c0["public_id"])["id"]) not in [l.split(",")[0] for l in lines[1:]]
+    assert "device-priv9999" not in body and "37.70" not in body          # 식별값·위치는 내보내지 않음
+    row_a = next(l for l in lines[1:] if l.startswith(f"{ia},")).split(",")
+    assert row_a[4] == "박리" and row_a[6] in ("예", "아니오")
+    s = c.get("/api/admin/corrections/summary").json()
+    assert s["total"] >= 1 and any(p["true"] == "박리" for p in s["pairs"])

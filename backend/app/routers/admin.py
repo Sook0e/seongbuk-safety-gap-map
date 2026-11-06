@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from .. import ledger, scoring, screening, serialize
+from .. import corrections, ledger, scoring, screening, serialize
 from ..constants import AFTERCARE_RADIUS_M, CATEGORIES, KST, RECHECK_DAYS, STATUSES
 from ..db import get_db
 from ..models import Photo, Report, ReportLink, StatusHistory, now
@@ -53,6 +53,21 @@ def ledger_xlsx(source: str | None = None, status: str | None = None, category: 
     stamp = datetime.now(KST).strftime("%Y%m%d")
     return Response(ledger.to_xlsx(rows), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f"attachment; filename=ledger_{stamp}.xlsx; filename*=UTF-8''%EC%A0%90%EA%B2%80%EB%8C%80%EC%9E%A5_{stamp}.xlsx"})
+
+
+@router.get("/corrections.csv")
+def corrections_csv(db: Session = Depends(get_db)):
+    """담당자가 고친 AI 분류(실제 유형, 오탐)를 CSV로 내려받는다. AI 분류 개선용 평가 세트·프롬프트 예시 후보. 사진은 넣지 않고 사진 키만 적는다."""
+    stamp = datetime.now(KST).strftime("%Y%m%d")
+    return Response(corrections.to_csv(db), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename=ai_corrections_{stamp}.csv"})
+
+
+@router.get("/corrections/summary")
+def corrections_summary(db: Session = Depends(get_db)):
+    """AI가 어떤 유형을 담당자가 고른 어떤 유형으로 자주 틀렸는지 쌍별 건수. 수정된 건이 없으면 빈 목록."""
+    conf = corrections.confusion(db)
+    return {"total": sum(conf.values()), "pairs": [{"ai": a, "true": t, "count": n, "match": a == t} for (a, t), n in conf.most_common()]}
 
 
 @router.get("/summary", response_model=AdminSummary)
