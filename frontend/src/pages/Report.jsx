@@ -80,7 +80,8 @@ export default function Report() {
     } catch (e) { setError(`사진 처리 실패: ${e.message}`) } finally { setBusy(false) }
   }
 
-  // 사진 추가: AI 분류는 대표 사진만 하므로 추가 사진은 저장만 한다 (classify=false)
+  // 사진 추가: 추가 사진도 AI가 본 내용으로 사진 메모 초안을 채운다 (대표 사진과 같은 방식, 임시 결과는 쓰지 않음).
+  // 제보의 AI 분류와 우선순위는 대표 사진만 쓰고, 추가 사진의 AI 결과는 메모 초안에만 쓴다. 주민이 고쳐서 보낼 수 있다.
   async function addPhotos(files) {
     setError(''); setAdding(true)
     try {
@@ -88,8 +89,9 @@ export default function Report() {
       for (const file of files) {
         if (next.length >= 3) break
         const blob = await resizeImage(file)
-        const up = await api.uploadPhoto(blob, { classify: false })
-        next.push({ key: up.key, preview: URL.createObjectURL(blob), memo: '', takenAt: await takenAt(file) })
+        const up = await api.uploadPhoto(blob)
+        const draft = up.ai && !up.ai.mock && up.ai.category ? `${up.ai.category} 사진입니다. ${up.ai.reason ?? ''}`.trim().slice(0, 200) : ''
+        next.push({ key: up.key, preview: URL.createObjectURL(blob), memo: draft, takenAt: await takenAt(file) })
       }
       setExtras(next)
     } catch (e) { setError(`사진 추가 실패: ${e.message}`) } finally { setAdding(false) }
