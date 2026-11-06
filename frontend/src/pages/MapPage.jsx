@@ -11,6 +11,22 @@ const CENTER = [37.5894, 127.0167]
 const COLORS = { received: '#9CA3AF', review: '#BFD300', action: '#BFD300', done: '#001A47' }
 const FILTERS = [['all', '전체'], ['resident', '주민 제보'], ['done', '조치 완료']]
 const LEGEND = [['received', '접수'], ['review', '검토·조치 중'], ['done', '조치 완료']]
+// 멀리서 보면 가까운 제보를 숫자 원으로 묶고, 확대하면 낱개로 풀린다 (부동산 앱 지도처럼). 의존 라이브러리 없이 화면 격자로 묶는다.
+const CELL = 64            // 묶는 격자 크기(화면 픽셀)
+const MAX_CLUSTER_ZOOM = 17 // 이 줌 이상에서는 묶지 않고 낱개로 보여 줌
+
+function groupPoints(points, map, zoom) {
+  if (zoom >= MAX_CLUSTER_ZOOM) return points.map((f) => [f])
+  const cells = new Map()
+  points.forEach((f) => {
+    const [lon, lat] = f.geometry.coordinates
+    const pt = map.project([lat, lon], zoom)
+    const key = `${Math.floor(pt.x / CELL)}:${Math.floor(pt.y / CELL)}`
+    if (!cells.has(key)) cells.set(key, [])
+    cells.get(key).push(f)
+  })
+  return [...cells.values()]
+}
 
 export default function MapPage() {
   const el = useRef(null)
@@ -20,6 +36,7 @@ export default function MapPage() {
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [confirmMsg, setConfirmMsg] = useState('')
+  const [view, setView] = useState({ zoom: 14, bounds: null }) // 확대·이동할 때마다 갱신 → 묶음과 '이 지역 N건'을 다시 계산
 
   // 나도 봤어요(+1): 같은 곳 확인 인원 → 우선순위 점수에 반영. 브라우저당 한 번
   async function confirmSeen(publicId) {
@@ -45,6 +62,9 @@ export default function MapPage() {
       }).addTo(map.current)
     }).catch(() => {})
     layer.current = L.layerGroup().addTo(map.current)
+    const syncView = () => setView({ zoom: map.current.getZoom(), bounds: map.current.getBounds() })
+    map.current.on('zoomend moveend', syncView)
+    syncView()
     api.reportsMap().then((r) => setReports(r.features)).catch(() => {})
     return () => map.current.remove()
   }, [])
@@ -57,13 +77,31 @@ export default function MapPage() {
 
   useEffect(() => {
     layer.current.clearLayers()
-    shown.forEach((f) => {
-      const [lon, lat] = f.geometry.coordinates
-      L.circleMarker([lat, lon], { radius: 6, color: f._color, fillColor: f._color, fillOpacity: 0.8, weight: 1 })
-        .on('click', () => { setSelected(f); setConfirmMsg('') })
+    groupPoints(shown, map.current, view.zoom).forEach((items) => {
+      if (items.length === 1) {
+        const f = items[0]
+        const [lon, lat] = f.geometry.coordinates
+        L.circleMarker([lat, lon], { radius: 6, color: f._color, fillColor: f._color, fillOpacity: 0.8, weight: 1 })
+          .on('click', () => { setSelected(f); setConfirmMsg('') })
+          .addTo(layer.current)
+        return
+      }
+      const lls = items.map((f) => [f.geometry.coordinates[1], f.geometry.coordinates[0]])
+      const center = lls.reduce((a, c) => [a[0] + c[0] / lls.length, a[1] + c[1] / lls.length], [0, 0])
+      const size = Math.min(56, 30 + items.length * 2)
+      const icon = L.divIcon({
+        className: '', iconSize: [size, size],
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#001A47;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font:700 14px/1 Pretendard,sans-serif">${items.length}</div>`,
+      })
+      L.marker(center, { icon, keyboard: false })
+        .on('click', () => { setSelected(null); map.current.fitBounds(L.latLngBounds(lls), { padding: [70, 70], maxZoom: MAX_CLUSTER_ZOOM }) })
         .addTo(layer.current)
     })
-  }, [shown])
+  }, [shown, view.zoom])
+
+  // 지금 지도에 보이는 영역 안의 제보 수
+  const inView = useMemo(() => (view.bounds
+    ? shown.filter((f) => view.bounds.contains([f.geometry.coordinates[1], f.geometry.coordinates[0]])).length : shown.length), [shown, view.bounds])
 
   const p = selected?.properties
   return (
@@ -74,6 +112,9 @@ export default function MapPage() {
           <button key={k} type="button" onClick={() => setFilter(k)}
             className={`h-[34px] rounded-full px-3 text-[13px] ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>{label}</button>
         ))}
+      </div>
+      <div className="absolute bottom-3 left-3 z-[1000] rounded-full border border-line bg-white px-3 py-1 text-xs text-ink shadow-sm">
+        이 지역 제보 <strong className="text-brand">{inView}건</strong>
       </div>
       <div className={`absolute ${p ? 'bottom-[280px]' : 'bottom-3'} right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-[11px]`}>
         {LEGEND.map(([k, label]) => (
