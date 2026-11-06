@@ -22,10 +22,10 @@ export default function Home() {
         <p className="text-[15px] leading-relaxed text-sub">찍어서 올리면 AI가 유형을 먼저 보고,<br />담당자가 확인해 조치까지 알려드려요.</p>
       </div>
       <div className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4">
-        <div className="text-[13px] text-sub">이번 주 성북구</div>
+        <div className="text-sm text-sub">이번 주 성북구</div>
         <div className="grid grid-cols-2 gap-3">
-          <div><div className="text-2xl font-bold">{stats?.week_reports ?? '—'}건</div><div className="text-[13px] text-sub">주민 제보</div></div>
-          <div><div className="text-2xl font-bold text-brand">{stats?.week_done ?? '—'}건</div><div className="text-[13px] text-sub">조치 완료</div></div>
+          <div><div className="text-2xl font-bold">{stats?.week_reports ?? '—'}건</div><div className="text-sm text-sub">주민 제보</div></div>
+          <div><div className="text-2xl font-bold text-brand">{stats?.week_done ?? '—'}건</div><div className="text-sm text-sub">조치 완료</div></div>
         </div>
       </div>
       <div className="flex-1" />
@@ -34,7 +34,7 @@ export default function Home() {
         <Link to="/report?demo=1" className="flex h-[52px] items-center justify-center rounded-2xl border border-line bg-white text-base font-medium">체험용 사진으로 해보기</Link>
         <Link to="/map" className="self-center p-2 text-sm text-brand">지도 먼저 보기</Link>
       </div>
-      <div className="text-center text-xs text-sub">AI 결과는 담당자가 최종 확인합니다</div>
+      <div className="text-center text-[13px] text-sub">AI 결과는 담당자가 최종 확인합니다</div>
     </section>
   )
 }
