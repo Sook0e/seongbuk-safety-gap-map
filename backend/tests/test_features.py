@@ -124,7 +124,7 @@ def test_on_time_rate():
     assert after["due_total"] == before["due_total"] + 2
     assert after["rate_pct"] == round(after["on_time"] / after["due_total"] * 100)
     lines = client.get("/api/admin/report").json()["summary_lines"]
-    assert any("기한 안에 조치를 마친 비율" in line for line in lines)
+    assert any("기한 안에 조치를 시작한 비율" in line for line in lines)
 
 
 def test_vision_parse_tolerates_extra_text():

@@ -83,6 +83,10 @@ def test_overdue_and_summary():
     st = client.get("/api/stats").json()
     assert st["week_reports"] >= 1 and st["week_done"] >= 1
 
+    # 기한은 조치 시작까지: 상태를 '조치'로 바꾸면 완료 전이라도 기한 초과가 풀린다
+    client.patch(f"/api/admin/reports/{item['id']}", json={"status": "action"})
+    assert admin_item(item["public_id"])["priority"]["overdue"] is False
+
 
 # --- 보호구역 경계 판단 (경계가 있는 곳은 경계 안, 없는 곳만 반경 300m) ---
 SQUARE = [[127.000, 37.600], [127.001, 37.600], [127.001, 37.601], [127.000, 37.601], [127.000, 37.600]]  # 약 88m x 111m

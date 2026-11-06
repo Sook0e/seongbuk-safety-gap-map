@@ -6,7 +6,7 @@ import { api } from '../../lib/api.js'
 // 10초마다 다시 불러온다 (실시간 푸시는 만들지 않음)
 // 맨 위 '데이터 사전 점검'은 벤치마크(BV: 검사원이 전부 방문) 대비 '데이터가 먼저 본다'를 보여주는 줄 (docs/benchmark.md)
 
-// 기한 내 조치율: 기한이 지났거나 완료된 제보 중 기한 안에 완료한 비율 (backend/app/scoring.py on_time)
+// 기한 내 조치 시작률: 기한이 지났거나 조치를 시작한 제보 중 기한 안에 조치를 시작한 비율 (backend/app/scoring.py on_time)
 const onTime = (o) => (o ? (o.rate_pct == null ? '판단할 건 없음' : `${o.rate_pct}% (${o.on_time}/${o.due_total})`) : undefined)
 
 function Screening({ s }) {
@@ -48,10 +48,10 @@ export default function AdminDashboard() {
 
   const cards = [
     ['오늘 신규', summary?.today_new],
-    ['기한 초과 미조치', summary?.overdue_open],
+    ['기한 초과 (조치 미시작)', summary?.overdue_open],
     ['이번 달 조치 완료', summary?.done_this_month],
     ['평균 처리 기간', summary ? (summary.avg_days_to_done == null ? '완료 건 없음' : `${summary.avg_days_to_done}일`) : undefined],
-    ['기한 내 조치율', onTime(summary?.on_time)],
+    ['기한 내 조치 시작률', onTime(summary?.on_time)],
   ]
 
   return (
