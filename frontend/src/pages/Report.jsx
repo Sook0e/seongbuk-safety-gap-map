@@ -108,7 +108,7 @@ export default function Report() {
     setBusy(true); setError('')
     try {
       const r = await api.createReport({
-        photo_key: photo.key, lat: pos?.lat ?? null, lon: pos?.lon ?? null, accuracy_m: pos?.accuracy ?? null, client_key: myReports.clientKey(), // 같은 브라우저에서 올라온 제보를 담당자가 확인하는 용도(사람을 특정하지 않음)
+        photo_key: photo.key, lat: pos?.lat ?? null, lon: pos?.lon ?? null, accuracy_m: pos?.accuracy ?? null, client_key: myReports.clientKey(), client_nickname: myReports.nickname() || null, // 같은 브라우저에서 올라온 제보를 담당자가 확인하는 용도(사람을 특정하지 않음)
        
         memo: memo || null, is_demo: isDemo, facility_type: facility,
         taken_at: mainTaken, photo_memo: photoMemo || null,
@@ -203,6 +203,7 @@ export default function Report() {
       </label>
 
       {error && <p className="text-sm text-danger">{error}</p>}
+      <p className="text-[13px] text-sub">제보와 함께 이 브라우저의 식별번호 {myReports.clientCode()}{myReports.nickname() && ` · 별명 ${myReports.nickname()}`}가 저장돼요. 이름·연락처가 아니고, 내 제보 화면에서 확인하거나 바꿀 수 있어요.</p>
       <button type="button" disabled={!photo || busy} onClick={submit}
         className="h-[52px] rounded-2xl bg-brand text-base font-semibold text-white disabled:opacity-40">제보 보내기</button>
     </section>

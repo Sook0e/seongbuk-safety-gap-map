@@ -41,7 +41,7 @@ def create_report(body: ReportCreate, db: Session, source: str) -> Report:
         seen.add(extra.photo_key)
         r.photos.append(ReportPhoto(position=len(r.photos), photo_key=extra.photo_key, memo=extra.memo, taken_at=extra.taken_at))
     if body.client_key:
-        r.client = ReportClient(client_key=body.client_key)
+        r.client = ReportClient(client_key=body.client_key, nickname=(body.client_nickname or "").strip() or None)
     db.add(r)
     db.commit()
     db.refresh(r)

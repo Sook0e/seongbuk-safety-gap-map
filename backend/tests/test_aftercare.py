@@ -160,12 +160,15 @@ def test_client_key_same_browser_count_and_never_exposed():
     r2 = make(37.6710, 127.1110, client_key=A)
     r3 = make(37.6720, 127.1120, client_key=B)
     r4 = make(37.6730, 127.1130)  # 식별값 없음
+    r5 = make(37.6750, 127.1150, client_key=A, client_nickname="  안암동 주민 ")
     i1, i2, i3, i4 = (admin_item(x["public_id"]) for x in (r1, r2, r3, r4))
-    assert i1["same_client_reports"] == 2 and i2["same_client_reports"] == 2 and i2["same_client_24h"] == 2
-    assert i3["same_client_reports"] == 1
+    assert i1["same_client_reports"] == 3 and i2["same_client_reports"] == 3 and i2["same_client_24h"] == 3
+    assert i3["same_client_reports"] == 1 and i3["client_nickname"] is None
+    assert admin_item(r5["public_id"])["client_nickname"] == "안암동 주민" and admin_item(r5["public_id"])["same_client_reports"] == 3
     assert i4["same_client_reports"] is None and i4["same_client_24h"] is None
     # 식별값 자체는 주민·관리자 어느 응답에도 나가지 않는다
-    assert A not in str(client.get("/api/admin/reports").json()) and A not in str(r1)
+    assert i1["client_code"] == A[:8] and i4["client_code"] is None  # 담당자에게는 앞 8자리만
+    assert A not in str(client.get("/api/admin/reports").json()) and A not in str(r1)  # 전체 값은 나가지 않음
     assert A not in str(client.get("/api/reports", params={"ids": r1["public_id"]}).json())
     # 너무 짧은 값은 거부
     p = make(37.6740, 127.1140)

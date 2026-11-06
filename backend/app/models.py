@@ -115,6 +115,7 @@ class ReportClient(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     report_id: Mapped[int] = mapped_column(ForeignKey("reports.id"), unique=True, index=True)
     client_key: Mapped[str] = mapped_column(String(40), index=True)
+    nickname: Mapped[str | None] = mapped_column(String(20))   # 주민이 정한 별명(선택). 실명·연락처를 쓰지 않도록 화면에서 안내
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
     report: Mapped[Report] = relationship(back_populates="client")

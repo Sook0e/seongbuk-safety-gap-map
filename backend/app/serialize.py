@@ -63,12 +63,12 @@ def client_counts(r: Report) -> dict:
     """같은 브라우저(client_key)에서 올라온 제보 수. 식별값이 없으면 둘 다 None. 제보마다 조회하므로 파일럿 규모(수백 건)까지만 가정한다."""
     db = object_session(r)
     if r.client is None or db is None:
-        return {"same_client_reports": None, "same_client_24h": None}
+        return {"same_client_reports": None, "same_client_24h": None, "client_code": None, "client_nickname": None}
     times = [utc(t) for t in db.scalars(select(ReportClient.created_at).where(ReportClient.client_key == r.client.client_key))]
     at = utc(r.client.created_at)
     total = len(times)
     recent = sum(1 for t in times if abs((t - at).total_seconds()) <= 24 * 3600)
-    return {"same_client_reports": total, "same_client_24h": recent}
+    return {"same_client_reports": total, "same_client_24h": recent, "client_code": r.client.client_key[:8], "client_nickname": r.client.nickname}
 
 
 def report(r: Report, admin: bool = False) -> dict:
