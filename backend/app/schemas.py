@@ -50,6 +50,7 @@ class ReportCreate(BaseModel):
     photo_memo: str | None = Field(None, max_length=200, description="대표 사진 메모")
     accuracy_m: float | None = Field(None, description="폰이 알려 준 위치 정확도(m). '같은 곳' 판정 반경을 정하는 데 쓴다. 핀을 직접 옮겼으면 비움")
     extra_photos: list[PhotoIn] = Field(default_factory=list, max_length=3, description="대표 사진 말고 더 붙이는 사진 (최대 3장)")
+    client_key: str | None = Field(None, min_length=8, max_length=40, description="브라우저가 만든 무작위 값. 같은 브라우저에서 올라온 제보를 담당자가 확인하는 데 쓰며 응답에는 내보내지 않음")
 
 
 class AdminReportCreate(ReportCreate):
@@ -165,6 +166,8 @@ class AdminReportOut(ReportOut):
     priority: Priority
     season: str | None = Field(None, description="접수 달 기준 계절 점검 시기(해빙기 2~3월, 우기 5~6월, 동절기 11~12월. 팀 가정)")
     photo_age_days: int | None = Field(None, description="대표 사진 촬영일이 접수일보다 며칠 앞서는지. 촬영일 정보가 없으면 null")
+    same_client_reports: int | None = Field(None, description="같은 브라우저(client_key)에서 올라온 제보 수(이 제보 포함). 식별값이 없으면 null")
+    same_client_24h: int | None = Field(None, description="그중 이 제보 접수 전후 24시간 안에 올라온 수(이 제보 포함)")
     stale_photo: bool = Field(False, description="photo_age_days가 STALE_PHOTO_DAYS 초과(옛 사진 재사용 의심). 점수에는 반영하지 않음")
 
 

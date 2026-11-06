@@ -12,7 +12,7 @@ from .. import departments, scoring, serialize
 from ..constants import (CROSS_CHECK_MIN, KST, NOT_FIXED_MIN, RECENT_DONE_DAYS, RECUR_LOOKBACK_DAYS, STATUSES,
                          radius_for)
 from ..db import get_db
-from ..models import Photo, Report, ReportFeedback, ReportLink, ReportPhoto, StatusHistory, now
+from ..models import Photo, Report, ReportClient, ReportFeedback, ReportLink, ReportPhoto, StatusHistory, now
 from ..schemas import FeedbackIn, NearbyReport, PublicStats, ReportCreate, ReportOut
 
 router = APIRouter(tags=["reports"])
@@ -40,6 +40,8 @@ def create_report(body: ReportCreate, db: Session, source: str) -> Report:
             raise HTTPException(400, "extra_photos의 photo_key에 해당하는 사진이 없음")
         seen.add(extra.photo_key)
         r.photos.append(ReportPhoto(position=len(r.photos), photo_key=extra.photo_key, memo=extra.memo, taken_at=extra.taken_at))
+    if body.client_key:
+        r.client = ReportClient(client_key=body.client_key)
     db.add(r)
     db.commit()
     db.refresh(r)

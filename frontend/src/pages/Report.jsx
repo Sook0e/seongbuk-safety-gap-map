@@ -108,7 +108,8 @@ export default function Report() {
     setBusy(true); setError('')
     try {
       const r = await api.createReport({
-        photo_key: photo.key, lat: pos?.lat ?? null, lon: pos?.lon ?? null, accuracy_m: pos?.accuracy ?? null,
+        photo_key: photo.key, lat: pos?.lat ?? null, lon: pos?.lon ?? null, accuracy_m: pos?.accuracy ?? null, client_key: myReports.clientKey(), // 같은 브라우저에서 올라온 제보를 담당자가 확인하는 용도(사람을 특정하지 않음)
+       
         memo: memo || null, is_demo: isDemo, facility_type: facility,
         taken_at: mainTaken, photo_memo: photoMemo || null,
         extra_photos: extras.map((x) => ({ photo_key: x.key, memo: x.memo || null, taken_at: x.takenAt })),
