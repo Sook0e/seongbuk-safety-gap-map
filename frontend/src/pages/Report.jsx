@@ -2,8 +2,8 @@ import Brand from '../components/Brand.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AIResultCard from '../components/AIResultCard.jsx'
-import CameraGuide from '../components/CameraGuide.jsx'
 import NearbyReports from '../components/NearbyReports.jsx'
+import PhotoGuide from '../components/PhotoGuide.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
 import PinPicker from '../components/PinPicker.jsx'
 import { takenAt } from '../lib/exif.js'
@@ -42,7 +42,6 @@ export default function Report() {
   const [active, setActive] = useState(null)       // 메모를 적고 있는 사진 번호
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [camera, setCamera] = useState(false)      // 가이드 카메라 화면을 열었는지
   const [error, setError] = useState('')
 
   const [draftBack, setDraftBack] = useState(false) // 임시저장을 불러온 상태
@@ -154,25 +153,21 @@ export default function Report() {
         </div>
       </div>
 
+      <PhotoGuide />
+
       <div className="relative flex min-h-[150px] flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gray-300 p-3">
         {preview && <img src={preview} alt="제보 사진" className="absolute inset-0 h-full w-full object-cover" />}
         <div className="relative flex flex-col items-center gap-2">
           {isDemo
             ? <button type="button" onClick={useDemoPhoto} className="rounded-lg bg-white/90 px-4 py-2 text-sm font-medium">체험용 사진 불러오기</button>
-            : <div className="flex flex-wrap items-center justify-center gap-2">
-                <button type="button" onClick={() => { setError(''); setCamera(true) }} className="inline-flex min-h-11 items-center rounded-lg bg-white/90 px-4 text-sm font-semibold">
-                  {preview ? '가이드 카메라로 다시 찍기' : '가이드 카메라로 찍기'}
-                </button>
-                <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-white/90 px-4 text-sm font-medium">
-                  앨범·기본 카메라
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
-                </label>
-              </div>}
+            : <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-white/90 px-4 text-sm font-medium">
+                {preview ? '사진 다시 찍기' : '사진 찍기·고르기'}
+                <input type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
+              </label>}
           {busy && !photo && <span className="rounded bg-white/90 px-2 py-1 text-[13px]">AI가 사진을 보는 중…</span>}
         </div>
       </div>
-      {camera && <CameraGuide onCapture={(f) => { setCamera(false); handleFile(f) }} onClose={() => setCamera(false)} onFail={(m) => { setCamera(false); setError(m) }} />}
       {busy && !photo && <p className="-mt-2 text-[13px] text-sub">AI가 사진을 보고 있어요. 보통 5초쯤 걸리고, 처음에는 10초 넘게 걸릴 수 있어요. 이 화면을 닫지 말고 기다려 주세요.</p>}
       {error && !busy && lastFile && !photo && (
         <button type="button" onClick={() => handleFile(lastFile)} className="h-11 rounded-xl border border-brand text-sm font-semibold text-brand">다시 시도</button>
