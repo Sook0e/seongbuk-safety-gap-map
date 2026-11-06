@@ -11,6 +11,22 @@ const CENTER = [37.5894, 127.0167]
 const COLORS = { received: '#9CA3AF', review: '#BFD300', action: '#BFD300', done: '#001A47' }
 const FILTERS = [['all', '전체'], ['resident', '주민 제보'], ['done', '조치 완료']]
 const LEGEND = [['received', '접수'], ['review', '검토·조치 중'], ['done', '조치 완료']]
+// 멀리서 보면 가까운 제보를 숫자 원으로 묶고, 확대하면 낱개로 풀린다 (부동산 앱 지도처럼). 의존 라이브러리 없이 화면 격자로 묶는다.
+const CELL = 64            // 묶는 격자 크기(화면 픽셀)
+const MAX_CLUSTER_ZOOM = 17 // 이 줌 이상에서는 묶지 않고 낱개로 보여 줌
+
+function groupPoints(points, map, zoom) {
+  if (zoom >= MAX_CLUSTER_ZOOM) return points.map((f) => [f])
+  const cells = new Map()
+  points.forEach((f) => {
+    const [lon, lat] = f.geometry.coordinates
+    const pt = map.project([lat, lon], zoom)
+    const key = `${Math.floor(pt.x / CELL)}:${Math.floor(pt.y / CELL)}`
+    if (!cells.has(key)) cells.set(key, [])
+    cells.get(key).push(f)
+  })
+  return [...cells.values()]
+}
 
 export default function MapPage() {
   const el = useRef(null)
@@ -20,6 +36,7 @@ export default function MapPage() {
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [confirmMsg, setConfirmMsg] = useState('')
+  const [view, setView] = useState({ zoom: 14, bounds: null }) // 확대·이동할 때마다 갱신 → 묶음과 '이 지역 N건'을 다시 계산
 
   // 나도 봤어요(+1): 같은 곳 확인 인원 → 우선순위 점수에 반영. 브라우저당 한 번
   async function confirmSeen(publicId) {
@@ -45,6 +62,9 @@ export default function MapPage() {
       }).addTo(map.current)
     }).catch(() => {})
     layer.current = L.layerGroup().addTo(map.current)
+    const syncView = () => setView({ zoom: map.current.getZoom(), bounds: map.current.getBounds() })
+    map.current.on('zoomend moveend', syncView)
+    syncView()
     api.reportsMap().then((r) => setReports(r.features)).catch(() => {})
     return () => map.current.remove()
   }, [])
@@ -57,13 +77,38 @@ export default function MapPage() {
 
   useEffect(() => {
     layer.current.clearLayers()
-    shown.forEach((f) => {
-      const [lon, lat] = f.geometry.coordinates
-      L.circleMarker([lat, lon], { radius: 6, color: f._color, fillColor: f._color, fillOpacity: 0.8, weight: 1 })
-        .on('click', () => { setSelected(f); setConfirmMsg('') })
+    groupPoints(shown, map.current, view.zoom).forEach((items) => {
+      if (items.length === 1) {
+        const f = items[0]
+        const [lon, lat] = f.geometry.coordinates
+        L.circleMarker([lat, lon], { radius: 6, color: f._color, fillColor: f._color, fillOpacity: 0.8, weight: 1 })
+          .on('click', () => { setSelected(f); setConfirmMsg('') })
+          .addTo(layer.current)
+        return
+      }
+      const lls = items.map((f) => [f.geometry.coordinates[1], f.geometry.coordinates[0]])
+      const center = lls.reduce((a, c) => [a[0] + c[0] / lls.length, a[1] + c[1] / lls.length], [0, 0])
+      const size = Math.min(60, 34 + items.length * 2)
+      // 둘레 고리를 상태별 색 비율로 칠해서, 묶음 안에서도 접수 / 검토·조치 중 / 조치 완료가 구분되게 한다
+      const n = items.length
+      const cnt = { received: 0, mid: 0, done: 0 }
+      items.forEach((f) => { const st = f.properties.status; cnt[st === 'done' ? 'done' : st === 'received' ? 'received' : 'mid'] += 1 })
+      const parts = [['received', COLORS.received], ['mid', COLORS.review], ['done', COLORS.done]].filter(([k]) => cnt[k] > 0)
+      let acc = 0
+      const ring = parts.map(([k, c]) => { const from = acc; acc += (cnt[k] / n) * 100; return `${c} ${from}% ${acc}%` }).join(',')
+      const icon = L.divIcon({
+        className: '', iconSize: [size, size],
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:conic-gradient(${ring});box-shadow:0 1px 4px rgba(0,0,0,.35);border:2px solid #fff;display:flex;align-items:center;justify-content:center"><div style="width:${size - 16}px;height:${size - 16}px;border-radius:50%;background:#fff;color:#001A47;display:flex;align-items:center;justify-content:center;font:700 14px/1 Pretendard,sans-serif">${n}</div></div>`,
+      })
+      L.marker(center, { icon, keyboard: false })
+        .on('click', () => { setSelected(null); map.current.fitBounds(L.latLngBounds(lls), { padding: [70, 70], maxZoom: MAX_CLUSTER_ZOOM }) })
         .addTo(layer.current)
     })
-  }, [shown])
+  }, [shown, view.zoom])
+
+  // 지금 지도에 보이는 영역 안의 제보 수
+  const inView = useMemo(() => (view.bounds
+    ? shown.filter((f) => view.bounds.contains([f.geometry.coordinates[1], f.geometry.coordinates[0]])).length : shown.length), [shown, view.bounds])
 
   const p = selected?.properties
   return (
@@ -72,10 +117,13 @@ export default function MapPage() {
       <div className="absolute inset-x-0 top-0 z-[1000] flex flex-wrap gap-1.5 px-4 pt-4">
         {FILTERS.map(([k, label]) => (
           <button key={k} type="button" onClick={() => setFilter(k)}
-            className={`h-[34px] rounded-full px-3 text-[13px] ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>{label}</button>
+            className={`h-11 rounded-full px-4 text-sm ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>{label}</button>
         ))}
       </div>
-      <div className={`absolute ${p ? 'bottom-[280px]' : 'bottom-3'} right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-[11px]`}>
+      <div className="absolute bottom-3 left-3 z-[1000] rounded-full border border-line bg-white px-3 py-1.5 text-[13px] text-ink shadow-sm">
+        이 지역 제보 <strong className="text-brand">{inView}건</strong>
+      </div>
+      <div className={`absolute ${p ? 'bottom-[280px]' : 'bottom-3'} right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-xs`}>
         {LEGEND.map(([k, label]) => (
           <div key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: COLORS[k] }} />{label}</div>
         ))}
@@ -85,9 +133,9 @@ export default function MapPage() {
         <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-2.5 rounded-t-[20px] border-t border-line bg-white px-5 pb-4 pt-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
           <div className="mx-auto h-1 w-10 rounded bg-line" />
           <button type="button" onClick={() => setSelected(null)} className="float-right text-sm text-sub">닫기</button>
-          <div className="text-xs text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
+          <div className="text-[13px] text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
           <div className="font-semibold">{p.category ?? '분류 없음'}</div>
-          <div className="text-xs text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
+          <div className="text-[13px] text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
           {p.status !== 'done' && (
             <button type="button" disabled={myReports.confirmed(p.public_id) || myReports.ids().includes(p.public_id)}
               onClick={() => confirmSeen(p.public_id)}
@@ -95,7 +143,7 @@ export default function MapPage() {
               {myReports.confirmed(p.public_id) ? '확인했어요' : '나도 봤어요 (+1)'}
             </button>
           )}
-          {confirmMsg && <p className="mt-1 text-xs text-gray-600">{confirmMsg}</p>}
+          {confirmMsg && <p className="mt-1 text-[13px] text-gray-600">{confirmMsg}</p>}
         </div>
       )}
     </div>

@@ -9,7 +9,7 @@ export default function StatusSteps({ status }) {
       {STEPS.map(([key, label], i) => (
         <li key={key} className="flex flex-col items-center gap-1.5">
           <span className={`h-1.5 w-full rounded ${i <= current ? color : 'bg-gray-200'}`} />
-          <span className={`text-xs ${i === current ? 'font-semibold' : ''}`}>{label}</span>
+          <span className={`text-[13px] ${i === current ? 'font-semibold' : ''}`}>{label}</span>
         </li>
       ))}
     </ol>

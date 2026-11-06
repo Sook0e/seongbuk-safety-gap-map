@@ -61,24 +61,24 @@ export default function MyReports() {
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
               <span className="text-base font-semibold">{r.ai?.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
-              <span className="text-xs text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')} · 접수번호 {r.public_id}</span>
+              <span className="text-[13px] text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')} · 접수번호 {r.public_id}</span>
             </div>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${chip(r.status, r.not_target)}`}>{r.not_target ? '처리 대상 아님' : (r.status_label ?? r.status)}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${chip(r.status, r.not_target)}`}>{r.not_target ? '처리 대상 아님' : (r.status_label ?? r.status)}</span>
           </div>
           {r.not_target
-            ? <p className="rounded-lg bg-page px-3 py-2.5 text-[13px] leading-normal">담당자가 확인한 결과, 처리 대상이 아니라고 판단했습니다.{r.dept_note ? ` 이유: ${r.dept_note}` : ' 이유는 담당 부서에 문의해 주세요.'}</p>
-            : <><StatusSteps status={r.status} /><p className="text-[13px] font-medium text-brand">{progress(r)}</p></>}
+            ? <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">담당자가 확인한 결과, 처리 대상이 아니라고 판단했습니다.{r.dept_note ? ` 이유: ${r.dept_note}` : ' 이유는 담당 부서에 문의해 주세요.'}</p>
+            : <><StatusSteps status={r.status} /><p className="text-sm font-medium text-brand">{progress(r)}</p></>}
           <div className="grid grid-cols-2 gap-2">
             {(r.photos?.length ? r.photos : [{ photo_url: r.photo_url }]).filter((p) => p.photo_url).map((p, i) => (
               <figure key={p.photo_url} className="flex flex-col gap-1">
                 <img src={p.photo_url} alt={i === 0 ? '제보 사진' : `제보 사진 ${i + 1}`} className="h-24 w-full rounded-lg object-cover" />
-                <figcaption className="text-xs leading-snug text-sub">{i === 0 ? '제보 사진' : `사진 ${i + 1}`}{p.taken_at && ` · 촬영 ${formatTaken(p.taken_at)}`}{p.memo && <span className="block text-ink">{p.memo}</span>}</figcaption>
+                <figcaption className="text-[13px] leading-snug text-sub">{i === 0 ? '제보 사진' : `사진 ${i + 1}`}{p.taken_at && ` · 촬영 ${formatTaken(p.taken_at)}`}{p.memo && <span className="block text-ink">{p.memo}</span>}</figcaption>
               </figure>
             ))}
-            {r.after_photo_url && <figure className="flex flex-col gap-1"><img src={r.after_photo_url} alt="조치 후 사진" className="h-24 w-full rounded-lg object-cover" /><figcaption className="text-xs text-sub">조치 후 사진</figcaption></figure>}
+            {r.after_photo_url && <figure className="flex flex-col gap-1"><img src={r.after_photo_url} alt="조치 후 사진" className="h-24 w-full rounded-lg object-cover" /><figcaption className="text-[13px] text-sub">조치 후 사진</figcaption></figure>}
           </div>
-          {r.dept && <p className="text-xs text-sub">담당: {r.dept}</p>}
-          {!r.not_target && r.dept_note && <p className="rounded-lg bg-page px-3 py-2.5 text-[13px] leading-normal">{r.dept_note}</p>}
+          {r.dept && <p className="text-[13px] text-sub">담당: {r.dept}</p>}
+          {!r.not_target && r.dept_note && <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">{r.dept_note}</p>}
         </article>
       ))}
     </section>

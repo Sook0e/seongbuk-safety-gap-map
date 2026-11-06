@@ -120,16 +120,16 @@ export default function Report() {
       <div className="grid grid-cols-3 gap-1.5">
         {steps.map(([label, done]) => <div key={label} className={`h-1 rounded ${done ? 'bg-brand' : 'bg-gray-300'}`} />)}
       </div>
-      <div className="flex justify-between text-xs text-sub">{steps.map(([label], i) => <span key={label}>{i + 1} {label}</span>)}</div>
-      <p className="text-xs text-sub">얼굴·차량 번호판이 나오지 않게, 길에서만 찍어 주세요. 사진 속 위치 정보(EXIF)는 지우고 저장합니다.</p>
+      <div className="flex justify-between text-[13px] text-sub">{steps.map(([label], i) => <span key={label}>{i + 1} {label}</span>)}</div>
+      <p className="text-[13px] text-sub">얼굴·차량 번호판이 나오지 않게, 길에서만 찍어 주세요. 사진 속 위치 정보(EXIF)는 지우고 저장합니다.</p>
 
       <div>
-        <p className="mb-1.5 text-[13px] font-semibold">이런 걸 찍어 주세요</p>
+        <p className="mb-1.5 text-sm font-semibold">이런 걸 찍어 주세요</p>
         <div className="grid grid-cols-2 gap-2">
           {EXAMPLES.map(([title, desc]) => (
             <div key={title} className="rounded-xl border border-line bg-white px-3 py-2.5">
-              <div className="text-[13px] font-semibold">{title}</div>
-              <div className="mt-0.5 text-xs leading-snug text-sub">{desc}</div>
+              <div className="text-sm font-semibold">{title}</div>
+              <div className="mt-0.5 text-[13px] leading-snug text-sub">{desc}</div>
             </div>
           ))}
         </div>
@@ -140,17 +140,17 @@ export default function Report() {
         <div className="relative flex flex-col items-center gap-2">
           {isDemo
             ? <button type="button" onClick={useDemoPhoto} className="rounded-lg bg-white/90 px-4 py-2 text-sm font-medium">체험용 사진 불러오기</button>
-            : <label className="cursor-pointer rounded-lg bg-white/90 px-4 py-2 text-sm font-medium">
+            : <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-white/90 px-4 text-sm font-medium">
                 {preview ? '사진 다시 찍기' : '사진 찍기·고르기'}
                 <input type="file" accept="image/*" capture="environment" className="hidden"
                   onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
               </label>}
-          {busy && !photo && <span className="rounded bg-white/90 px-2 py-1 text-xs">AI가 사진을 보는 중…</span>}
+          {busy && !photo && <span className="rounded bg-white/90 px-2 py-1 text-[13px]">AI가 사진을 보는 중…</span>}
         </div>
       </div>
-      {busy && !photo && <p className="-mt-2 text-xs text-sub">AI가 사진을 보고 있어요. 보통 5초쯤 걸리고, 처음에는 10초 넘게 걸릴 수 있어요. 이 화면을 닫지 말고 기다려 주세요.</p>}
+      {busy && !photo && <p className="-mt-2 text-[13px] text-sub">AI가 사진을 보고 있어요. 보통 5초쯤 걸리고, 처음에는 10초 넘게 걸릴 수 있어요. 이 화면을 닫지 말고 기다려 주세요.</p>}
       {error && !busy && lastFile && !photo && (
-        <button type="button" onClick={() => handleFile(lastFile)} className="h-10 rounded-xl border border-brand text-sm font-semibold text-brand">다시 시도</button>
+        <button type="button" onClick={() => handleFile(lastFile)} className="h-11 rounded-xl border border-brand text-sm font-semibold text-brand">다시 시도</button>
       )}
 
       <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
@@ -159,7 +159,7 @@ export default function Report() {
           <span className="flex-1">{locText}</span>
         </div>
         <PinPicker value={pos} onChange={(p) => { setPos(p); setLocState('manual') }} />
-        {pos && <p className="text-xs text-gray-400">{pos.lat.toFixed(5)}, {pos.lon.toFixed(5)} · 핀을 끌어 옮길 수 있어요</p>}
+        {pos && <p className="text-[13px] text-sub">{pos.lat.toFixed(5)}, {pos.lon.toFixed(5)} · 핀을 끌어 옮길 수 있어요</p>}
       </div>
 
       {photo && <PhotoStrip items={stripItems} active={active} onActive={setActive} onMemo={setItemMemo} onRemove={removeItem} onAdd={addPhotos} adding={adding} />}
@@ -167,21 +167,21 @@ export default function Report() {
       {photo && <NearbyReports pos={pos} category={photo.ai && !photo.ai.mock ? photo.ai.category : null} />}
 
       <div>
-        <p className="mb-1.5 text-[13px] text-sub">어떤 시설인가요? (담당 부서를 정하는 데 씁니다)</p>
+        <p className="mb-1.5 text-sm text-sub">어떤 시설인가요? (담당 부서를 정하는 데 씁니다)</p>
         <div className="flex flex-wrap gap-2">
           {Object.entries(facilityTypes).map(([code, label]) => (
             <button key={code} type="button" onClick={() => setFacility(code)}
-              className={`h-9 rounded-full border px-3 text-sm ${facility === code ? 'border-brand bg-brand text-white' : 'border-line bg-white'}`}>
+              className={`h-11 rounded-full border px-3.5 text-sm ${facility === code ? 'border-brand bg-brand text-white' : 'border-line bg-white'}`}>
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      <label className="flex flex-col gap-1.5 text-[13px] text-sub">한 줄 메모 (선택)
+      <label className="flex flex-col gap-1.5 text-sm text-sub">한 줄 메모 (선택)
         <input value={memo} onChange={(e) => { setMemo(e.target.value); setMemoFromAI(false) }} maxLength={200}
           placeholder="예: 비 온 뒤 금이 더 커졌어요" className="h-11 rounded-xl border border-line bg-white px-3 text-[15px] text-ink" />
-        {memoFromAI && <span className="text-xs">AI가 사진을 보고 쓴 초안이에요. 고쳐서 보내셔도 됩니다.</span>}
+        {memoFromAI && <span className="text-[13px]">AI가 사진을 보고 쓴 초안이에요. 고쳐서 보내셔도 됩니다.</span>}
       </label>
 
       {error && <p className="text-sm text-danger">{error}</p>}
