@@ -68,9 +68,9 @@ def test_priority_sort_and_false_positive():
 
 def test_overdue_and_summary():
     item = admin_item(make(*FAR)["public_id"])
-    with SessionLocal() as db:  # 접수 10일 전으로 돌려 기한(7일) 초과 만들기
+    with SessionLocal() as db:  # 접수 20일 전으로 돌려 기한(14일) 초과 만들기
         r = db.get(Report, item["id"])
-        r.created_at = datetime.now(timezone.utc) - timedelta(days=10)
+        r.created_at = datetime.now(timezone.utc) - timedelta(days=20)
         db.commit()
     assert admin_item(item["public_id"])["priority"]["overdue"] is True
 
@@ -82,6 +82,10 @@ def test_overdue_and_summary():
 
     st = client.get("/api/stats").json()
     assert st["week_reports"] >= 1 and st["week_done"] >= 1
+
+    # 기한은 조치 시작까지: 상태를 '조치'로 바꾸면 완료 전이라도 기한 초과가 풀린다
+    client.patch(f"/api/admin/reports/{item['id']}", json={"status": "action"})
+    assert admin_item(item["public_id"])["priority"]["overdue"] is False
 
 
 # --- 보호구역 경계 판단 (경계가 있는 곳은 경계 안, 없는 곳만 반경 300m) ---

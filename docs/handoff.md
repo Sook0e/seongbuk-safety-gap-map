@@ -31,7 +31,7 @@
 | 어린이보호구역 실제 경계: 점수 '경계 안 또는 경계에서 30m 이내면 +30'(경계 없는 22곳은 반경 300m), 주민 지도에 빨간 경계 | ✅ | `backend/app/scoring.py`(`zone_hit`), `backend/scripts/build_zones.py`, `GET /api/zones`, `MapPage.jsx` | `/map` 에서 얇은 경계선 확인, `python -m pytest backend/tests -q` |
 | 나도 봤어요(+1) → 우선순위 점수 반영 | ✅ | `POST /api/reports/{id}/confirm`, `MapPage.jsx` | 주민 지도에서 남의 제보 누르기 |
 | 제보 위치 핀 조정 (끌기·지도 누르기) | ✅ | `components/PinPicker.jsx` | `/report` 2단계. 위치 자동은 https에서만 |
-| 대시보드·확인서 '기한 내 조치율' (기한 지난 건 중 기한 안 완료 비율) | ✅ | `scoring.on_time()` | `/admin` 다섯 번째 칸 |
+| 대시보드·확인서 '기한 내 조치 시작률' (기한 지난 건 중 기한 안에 조치 시작한 비율, 11/6 완료 기준에서 변경) | ✅ | `scoring.on_time()` | `/admin` 다섯 번째 칸 |
 | AI 신뢰도 50 미만 → '담당자 확인 필요' 표시 (점수는 그대로) | ✅ | `scoring.py` (`needs_review`), `AdminList.jsx`, `PriorityCard.jsx` | 관리자 목록 유형 옆 '확인 필요' |
 | 백엔드 테스트 29개 (시연 흐름·점수·적재·집계·부서·보고서·+1·사전 점검·보호구역 경계·30m·조치율·AI 응답 처리·확인 필요) | ✅ | `backend/tests/` | `python -m pytest backend/tests -q` |
 

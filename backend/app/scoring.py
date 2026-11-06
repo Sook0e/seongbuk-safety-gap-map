@@ -33,7 +33,8 @@ CONFIRM_POINTS_MAX = 20
 # --- 조치 기한 ---
 URGENT_THRESHOLD = 60
 DUE_DAYS_URGENT = 3
-DUE_DAYS_NORMAL = 7
+DUE_DAYS_NORMAL = 14  # 팀 가정. 안전신문고 후기에 '최대 14일'이라는 말이 있으나 공식 자료로는 확인하지 못함
+STARTED = ("action", "done")  # 기한은 '조치 시작'(상태가 조치 또는 완료로 바뀜)까지. 실제 공사 완료는 오래 걸릴 수 있어 완료까지로 보지 않는다 (팀 가정, decisions.md)
 
 
 @lru_cache(maxsize=1)
@@ -205,7 +206,7 @@ def score(r) -> dict:
     due_at = overdue = None
     if r.source != "gap":  # 공백 후보는 신고가 아니라 점검 후보라 기한을 두지 않음 (decisions.md)
         due_at = _aware(r.created_at) + timedelta(days=DUE_DAYS_URGENT if urgent else DUE_DAYS_NORMAL)
-        overdue = r.status != "done" and not r.false_positive and datetime.now(timezone.utc) > due_at
+        overdue = r.status not in STARTED and not r.false_positive and datetime.now(timezone.utc) > due_at
     return {"total": total, "items": items, "urgent": urgent, "due_at": due_at, "overdue": overdue,
             "needs_review": needs_review}
 
@@ -216,17 +217,23 @@ def done_at(r) -> datetime | None:
     return _aware(h.created_at) if h else None
 
 
+def started_at(r) -> datetime | None:
+    """처음 '조치'(또는 곧바로 '완료')로 바뀐 시각 = 조치를 시작한 시각 (처리 이력 기준)."""
+    h = next((h for h in r.history if h.to_status in STARTED), None)
+    return _aware(h.created_at) if h else None
+
+
 def on_time(rows) -> dict:
-    """기한 내 조치율 = 기한 안에 완료한 건 / 기한이 이미 지났거나 완료된 건.
+    """기한 내 조치 시작률 = 기한 안에 조치를 시작한 건 / 기한이 이미 지났거나 조치를 시작한 건.
     대상: 기한이 있는 제보(주민·CCTV)만. 공백 후보·체험용·오탐은 뺀다.
-    기한 초과 미완료는 '못 지킨 건'으로 분모에 들어가고, 기한이 남은 미완료는 아직 판단하지 않는다."""
+    기한이 지났는데 조치를 시작하지 않은 건은 '못 지킨 건'으로 분모에 들어가고, 기한이 남은 미시작 건은 아직 판단하지 않는다."""
     now = datetime.now(timezone.utc)
     met = due = 0
     for r in rows:
         if r.source == "gap" or r.is_demo or r.false_positive:
             continue
         s = score(r)
-        d = done_at(r) if r.status == "done" else None
+        d = started_at(r) if r.status in STARTED else None
         if d is not None:
             due += 1
             met += d <= s["due_at"]

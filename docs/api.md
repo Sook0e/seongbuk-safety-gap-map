@@ -33,7 +33,7 @@
 | 메서드 | 주소 | 설명 |
 | --- | --- | --- |
 | GET | `/api/stats` | 주민 첫 화면 `{week_reports, week_done}`. 이번 주(월요일 0시, 한국 시간)·주민 제보만·체험/오탐 제외 |
-| GET | `/api/admin/summary` | 대시보드 `{today_new, overdue_open, done_this_month, avg_days_to_done, open_by_status, on_time, screening}`. `on_time` = 기한 내 조치율 `{on_time, due_total, rate_pct}` (주민·CCTV 제보 중 기한이 지났거나 완료된 건 대비 기한 안 완료, 체험용·오탐 제외). 공백 후보는 '오늘 신규'·기한에서 제외. `screening` = 데이터 사전 점검 `{facilities_total, facilities, targets, targets_done, ratio_pct, by_rule}` (`docs/benchmark.md`) |
+| GET | `/api/admin/summary` | 대시보드 `{today_new, overdue_open, done_this_month, avg_days_to_done, open_by_status, on_time, screening}`. `on_time` = 기한 내 조치 시작률 `{on_time, due_total, rate_pct}` (주민·CCTV 제보 중 기한이 지났거나 조치를 시작한 건 대비 기한 안에 조치 시작, 체험용·오탐 제외. 조치 시작 = 상태가 '조치' 또는 '완료'로 처음 바뀜). 공백 후보는 '오늘 신규'·기한에서 제외. `screening` = 데이터 사전 점검 `{facilities_total, facilities, targets, targets_done, ratio_pct, by_rule}` (`docs/benchmark.md`) |
 
 ## 사진
 | 메서드 | 주소 | 설명 |
@@ -94,7 +94,7 @@
 | 메서드 | 주소 | 설명 |
 | --- | --- | --- |
 | GET | `/api/admin/reports` | 목록. 쿼리: `source`, `status`, `category`, `include_demo`(기본 true), `sort=priority`(기본)/`new`/`old` |
-| GET | `/api/admin/ledger.xlsx` | **점검 대장 엑셀**. 목록과 같은 쿼리(`source`, `status`, `category`, `sort`) + `include_demo`(기본 false). 사진·주민 메모는 넣지 않음. 열: 접수번호, 접수일시, 출처, 유형·규칙, AI 신뢰도, 담당 부서, 위치, 위도·경도, 우선순위 점수, 처리 상태, 조치 기한, 기한 초과, 완료일시, 담당자 메모, 주민 확인, 교차확인, 오탐 |
+| GET | `/api/admin/ledger.xlsx` | **점검 대장 엑셀**. 목록과 같은 쿼리(`source`, `status`, `category`, `sort`) + `include_demo`(기본 false). 사진·주민 메모는 넣지 않음. 열: 접수번호, 접수일시, 출처, 유형·규칙, AI 신뢰도, 담당 부서, 위치, 위도·경도, 우선순위 점수, 처리 상태, 조치 시작 기한, 기한 초과, 완료일시, 담당자 메모, 주민 확인, 교차확인, 오탐 |
 | POST | `/api/admin/reports` | CCTV 프레임 등 직접 등록. `{photo_key, source: "cctv"/"gap", lat?, lon?, ...}` |
 | GET | `/api/admin/reports/{id}` | 상세 |
 | PATCH | `/api/admin/reports/{id}` | 보낸 항목만 변경: `status, note, after_photo_key, dept, dept_note, dispatch, false_positive, true_category`(실제 유형, 빈 문자열이면 지움). 부서를 바꾸면 이력에 '담당 부서 변경' |
