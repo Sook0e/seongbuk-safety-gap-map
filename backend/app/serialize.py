@@ -33,7 +33,8 @@ def report(r: Report, admin: bool = False) -> dict:
         "ai": r.photo.ai if r.photo else None, "facility_type": r.facility_type,
         "facility_label": departments.facility_label(r.facility_type), "dept": r.dept,
         "dept_note": r.dept_note, "confirm_count": r.confirm_count or 0,
-        "cross_checked": (r.confirm_count or 0) >= CROSS_CHECK_MIN, "history": history,
+        "cross_checked": (r.confirm_count or 0) >= CROSS_CHECK_MIN,
+        "not_target": bool(r.false_positive), "history": history,
     }
     if admin:
         out |= {"id": r.id, "updated_at": utc(r.updated_at), "source": r.source,

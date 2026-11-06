@@ -2,6 +2,7 @@ import Brand from '../components/Brand.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AIResultCard from '../components/AIResultCard.jsx'
+import NearbyReports from '../components/NearbyReports.jsx'
 import PinPicker from '../components/PinPicker.jsx'
 import { api } from '../lib/api.js'
 import { currentPosition, resizeImage } from '../lib/image.js'
@@ -30,6 +31,8 @@ export default function Report() {
   const [facilityTypes, setFacilityTypes] = useState({})
   const [facility, setFacility] = useState('unknown')
   const [memo, setMemo] = useState('')
+  const [memoFromAI, setMemoFromAI] = useState(false) // 메모칸이 AI 초안으로 채워진 상태
+  const [lastFile, setLastFile] = useState(null) // '다시 시도'용
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -41,11 +44,16 @@ export default function Report() {
   }, [])
 
   async function handleFile(file) {
-    setError(''); setBusy(true); setPhoto(null)
+    setError(''); setBusy(true); setPhoto(null); setLastFile(file)
     try {
       const blob = await resizeImage(file)
       setPreview(URL.createObjectURL(blob))
-      setPhoto(await api.uploadPhoto(blob))
+      const up = await api.uploadPhoto(blob)
+      setPhoto(up)
+      // 메모를 비워 둔 경우에만 AI가 본 내용으로 초안을 채운다 (임시 결과는 쓰지 않음). 주민이 고쳐서 보낼 수 있다.
+      if (!memo.trim() && up.ai && !up.ai.mock && up.ai.category) {
+        setMemo(`${up.ai.category} 사진입니다. ${up.ai.reason ?? ''}`.trim().slice(0, 200)); setMemoFromAI(true)
+      }
     } catch (e) { setError(`사진 처리 실패: ${e.message}`) } finally { setBusy(false) }
   }
 
@@ -112,6 +120,10 @@ export default function Report() {
           {busy && !photo && <span className="rounded bg-white/90 px-2 py-1 text-xs">AI가 사진을 보는 중…</span>}
         </div>
       </div>
+      {busy && !photo && <p className="-mt-2 text-xs text-sub">AI가 사진을 보고 있어요. 보통 5초쯤 걸리고, 처음에는 10초 넘게 걸릴 수 있어요. 이 화면을 닫지 말고 기다려 주세요.</p>}
+      {error && !busy && lastFile && !photo && (
+        <button type="button" onClick={() => handleFile(lastFile)} className="h-10 rounded-xl border border-brand text-sm font-semibold text-brand">다시 시도</button>
+      )}
 
       <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
         <div className="flex items-center gap-2.5 text-sm">
@@ -123,6 +135,7 @@ export default function Report() {
       </div>
 
       {photo && <AIResultCard ai={photo.ai} highlight />}
+      {photo && <NearbyReports pos={pos} category={photo.ai && !photo.ai.mock ? photo.ai.category : null} />}
 
       <div>
         <p className="mb-1.5 text-[13px] text-sub">어떤 시설인가요? (담당 부서를 정하는 데 씁니다)</p>
@@ -137,8 +150,9 @@ export default function Report() {
       </div>
 
       <label className="flex flex-col gap-1.5 text-[13px] text-sub">한 줄 메모 (선택)
-        <input value={memo} onChange={(e) => setMemo(e.target.value)} maxLength={200}
+        <input value={memo} onChange={(e) => { setMemo(e.target.value); setMemoFromAI(false) }} maxLength={200}
           placeholder="예: 비 온 뒤 금이 더 커졌어요" className="h-11 rounded-xl border border-line bg-white px-3 text-[15px] text-ink" />
+        {memoFromAI && <span className="text-xs">AI가 사진을 보고 쓴 초안이에요. 고쳐서 보내셔도 됩니다.</span>}
       </label>
 
       {error && <p className="text-sm text-danger">{error}</p>}

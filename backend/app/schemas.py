@@ -74,7 +74,21 @@ class ReportOut(BaseModel):
     dept_note: str | None
     confirm_count: int = Field(0, description="같은 곳 확인(나도 봤어요) 인원")
     cross_checked: bool = Field(False, description="확인 인원이 CROSS_CHECK_MIN(3명) 이상이면 true. 로그인이 없어 브라우저 기준")
+    not_target: bool = Field(False, description="담당자가 '처리 대상 아님'(AI 오탐 표시)으로 닫았으면 true. 이유는 dept_note에 적는다")
     history: list[HistoryOut]
+
+
+class NearbyReport(BaseModel):
+    """제보 화면에서 '같은 곳에 이미 접수된 제보'로 보여 주는 요약. 사진·메모는 넣지 않는다."""
+    public_id: str
+    category: str | None
+    status: str
+    status_label: str
+    created_at: datetime
+    distance_m: int
+    confirm_count: int = 0
+    dept: str | None = None
+    facility_label: str | None = None
 
 
 class PriorityItem(BaseModel):

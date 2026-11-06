@@ -37,6 +37,7 @@ export const api = {
   // 주민 제보
   createReport: (body) => request('/api/reports', json('POST', body)),
   myReports: (ids) => (ids.length ? request(`/api/reports?ids=${ids.join(',')}`) : Promise.resolve([])),
+  nearby: (lat, lon, category) => request(`/api/reports/nearby?${new URLSearchParams({ lat, lon, ...(category ? { category } : {}) })}`), // 같은 곳에 이미 접수된 제보
   report: (publicId) => request(`/api/reports/${publicId}`),
   confirm: (publicId) => request(`/api/reports/${publicId}/confirm`, { method: 'POST' }), // 나도 봤어요 +1
   stats: () => request('/api/stats'), // 첫 화면 '이번 주 제보·조치 완료'
