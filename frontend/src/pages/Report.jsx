@@ -34,6 +34,7 @@ export default function Report() {
   const [facility, setFacility] = useState('unknown')
   const [memo, setMemo] = useState('')
   const [aiDrafted, setAiDrafted] = useState(false) // 사진 메모 칸이 AI 초안으로 채워진 상태
+  const [active, setActive] = useState(0)          // 메모 칸이 가리키는 사진 번호 (0이 대표 사진)
   const [lastFile, setLastFile] = useState(null) // '다시 시도'용
   const [photoMemo, setPhotoMemo] = useState('')    // 대표 사진 메모
   const [mainTaken, setMainTaken] = useState(null)  // 대표 사진 촬영 일시
@@ -98,7 +99,7 @@ export default function Report() {
   }
   const stripItems = photo ? [{ key: 'main', preview, memo: photoMemo, takenAt: mainTaken }, ...extras] : []
   const setItemMemo = (i, v) => (i === 0 ? setPhotoMemo(v) : setExtras((l) => l.map((x, k) => (k === i - 1 ? { ...x, memo: v } : x))))
-  const removeItem = (i) => setExtras((l) => l.filter((_, k) => k !== i - 1))
+  const removeItem = (i) => { setExtras((l) => l.filter((_, k) => k !== i - 1)); setActive(0) }
 
   async function useDemoPhoto() {
     const res = await fetch('/demo/sample.jpg')
@@ -181,7 +182,7 @@ export default function Report() {
         {pos && <p className="text-[13px] text-sub">{pos.lat.toFixed(5)}, {pos.lon.toFixed(5)} · 핀을 끌어 옮길 수 있어요</p>}
       </div>
 
-      {photo && <PhotoStrip items={stripItems} onMemo={setItemMemo} onRemove={removeItem} onAdd={addPhotos} adding={adding} aiDrafted={aiDrafted} />}
+      {photo && <PhotoStrip items={stripItems} active={active} onActive={setActive} onMemo={setItemMemo} onRemove={removeItem} onAdd={addPhotos} adding={adding} aiDrafted={aiDrafted} />}
       {photo && <AIResultCard ai={photo.ai} highlight />}
       {photo && <NearbyReports pos={pos} accuracy={pos?.accuracy} category={photo.ai && !photo.ai.mock ? photo.ai.category : null} />}
 
