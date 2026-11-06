@@ -128,3 +128,4 @@
 - `GET /api/admin/corrections/summary` AI 유형 → 담당자가 고른 유형 쌍별 건수(`total`, `pairs[{ai, true, count, match}]`).
 - `POST /api/reports` 본문에 `client_key?`(8~40자, 브라우저 무작위 값) 추가. 응답에는 나가지 않는다. 관리자 제보 응답에 `same_client_reports`(같은 브라우저 제보 수, 이 제보 포함), `same_client_24h`(그중 이 제보 전후 24시간 안). 식별값이 없으면 null.
 - 식별번호·별명: `POST /api/reports` 본문에 `client_nickname?`(20자) 추가. 관리자 제보 응답에 `client_code`(식별값 앞 8자리, 주민이 '내 제보' 화면에서 보는 번호와 같음), `client_nickname`. 식별값 전체는 어느 응답에도 나가지 않는다.
+- `GET /api/admin/summary`에 `first_review{count, avg_hours, median_hours, within_24h_pct, waiting, oldest_waiting_hours}` 추가. 접수에서 다른 상태(검토·조치·완료)로 처음 바뀐 시점까지 걸린 시간(메모만 남긴 것은 확인으로 세지 않음). 아직 접수 상태인 제보는 `waiting`으로 센다. 체험·오탐 제외.
