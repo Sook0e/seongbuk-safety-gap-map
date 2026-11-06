@@ -33,7 +33,7 @@ CONFIRM_POINTS_MAX = 20
 # --- 조치 기한 ---
 URGENT_THRESHOLD = 60
 DUE_DAYS_URGENT = 3
-DUE_DAYS_NORMAL = 7
+DUE_DAYS_NORMAL = 14  # 팀 가정. 안전신문고 후기에 '최대 14일'이라는 말이 있으나 공식 자료로는 확인하지 못함
 STARTED = ("action", "done")  # 기한은 '조치 시작'(상태가 조치 또는 완료로 바뀜)까지. 실제 공사 완료는 오래 걸릴 수 있어 완료까지로 보지 않는다 (팀 가정, decisions.md)
 
 

@@ -114,10 +114,10 @@ def test_on_time_rate():
     before = client.get("/api/admin/summary").json()["on_time"]
     fast = admin(report()["public_id"])  # 바로 완료 → 기한 안
     client.patch(f"/api/admin/reports/{fast['id']}", json={"status": "done"})
-    late = admin(report()["public_id"])  # 10일 전 접수, 미완료 → 기한 초과
+    late = admin(report()["public_id"])  # 20일 전 접수, 미완료 → 기한 초과
     with SessionLocal() as db:
         r = db.get(Report, late["id"])
-        r.created_at = r.created_at - timedelta(days=10)
+        r.created_at = r.created_at - timedelta(days=20)
         db.commit()
     after = client.get("/api/admin/summary").json()["on_time"]
     assert after["on_time"] == before["on_time"] + 1

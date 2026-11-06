@@ -68,9 +68,9 @@ def test_priority_sort_and_false_positive():
 
 def test_overdue_and_summary():
     item = admin_item(make(*FAR)["public_id"])
-    with SessionLocal() as db:  # 접수 10일 전으로 돌려 기한(7일) 초과 만들기
+    with SessionLocal() as db:  # 접수 20일 전으로 돌려 기한(14일) 초과 만들기
         r = db.get(Report, item["id"])
-        r.created_at = datetime.now(timezone.utc) - timedelta(days=10)
+        r.created_at = datetime.now(timezone.utc) - timedelta(days=20)
         db.commit()
     assert admin_item(item["public_id"])["priority"]["overdue"] is True
 
