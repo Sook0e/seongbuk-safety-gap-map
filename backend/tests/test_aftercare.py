@@ -223,3 +223,36 @@ def test_photos_hidden_until_done_except_for_owner():
     assert done["photo_url"] and done["photos"]
     # 담당자 화면은 항상 사진이 보임
     assert admin_item(pid)["photo_url"]
+
+    
+def test_first_review_hours_and_summary():
+    from datetime import datetime, timedelta, timezone
+    from backend.app import review_time
+    from backend.app.models import Report, StatusHistory
+    r = make(37.9500, 127.6000)
+    with SessionLocal() as db:
+        row = db.query(Report).filter(Report.public_id == r["public_id"]).one()
+        t0 = datetime.now(timezone.utc) - timedelta(hours=30)
+        row.created_at = t0
+        row.history[0].created_at = t0
+        db.commit()
+        waiting = review_time.stats([row])
+        assert waiting["count"] == 0 and waiting["waiting"] == 1 and 29.9 <= waiting["oldest_waiting_hours"] <= 30.2   # 아직 접수 상태 = 확인 대기
+        assert review_time.first_review_hours(row) is None
+    # 메모만 남기면 확인이 아니고, 상태가 바뀌면 그 시각이 첫 확인
+    rid = admin_item(r["public_id"])["id"]
+    assert client.patch(f"/api/admin/reports/{rid}", json={"note": "메모만"}).status_code == 200
+    with SessionLocal() as db:
+        assert review_time.first_review_hours(db.get(Report, rid)) is None
+    assert client.patch(f"/api/admin/reports/{rid}", json={"status": "review"}).status_code == 200
+    with SessionLocal() as db:
+        row = db.get(Report, rid)
+        h = next(x for x in row.history if x.to_status == "review")
+        h.created_at = row.created_at + timedelta(hours=3)
+        db.commit()
+        db.refresh(row)
+        assert abs(review_time.first_review_hours(row) - 3.0) < 0.01
+        one = review_time.stats([row])
+        assert one["count"] == 1 and one["avg_hours"] == 3.0 and one["median_hours"] == 3.0 and one["within_24h_pct"] == 100 and one["waiting"] == 0
+    fr = client.get("/api/admin/summary").json()["first_review"]
+    assert fr["count"] >= 1 and fr["avg_hours"] is not None and set(fr) >= {"avg_hours", "median_hours", "within_24h_pct", "waiting", "oldest_waiting_hours"}
