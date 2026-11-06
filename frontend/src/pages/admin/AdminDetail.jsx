@@ -10,6 +10,12 @@ import { resizeImage } from '../../lib/image.js'
 const STATUSES = { received: '접수', review: '검토', action: '조치', done: '완료' }
 const CATEGORIES = ['콘크리트 균열', '박리', '백태/누수', '철근 노출', '기타']
 
+// 접수일 기준으로 사진을 며칠 전에 찍었는지 (같은 날이면 표시하지 않음)
+const agoText = (taken, created) => {
+  const d = Math.floor((new Date(created).getTime() - new Date(taken).getTime()) / 86400000)
+  return d >= 1 ? ` (접수 ${d}일 전)` : ''
+}
+
 export default function AdminDetail() {
   const { id } = useParams()
   const [r, setR] = useState(null)
@@ -44,7 +50,7 @@ export default function AdminDetail() {
                   {p.position > 0 && p.photo_url && <img src={p.photo_url} alt={`사진 ${p.position + 1}`} className="h-16 w-16 shrink-0 rounded object-cover" />}
                   <div>
                     <span className="font-medium">{p.position === 0 ? '대표 사진' : `사진 ${p.position + 1}`}</span>
-                    <span className="text-gray-500">{p.taken_at ? ` · 촬영 ${new Date(p.taken_at).toLocaleString('ko-KR')}` : ' · 촬영 일시 없음'}</span>
+                    <span className="text-gray-500">{p.taken_at ? ` · 촬영 ${new Date(p.taken_at).toLocaleString('ko-KR')}${agoText(p.taken_at, r.created_at)}` : ' · 촬영 일시 없음'}</span>
                     {p.memo && <p>{p.memo}</p>}
                   </div>
                 </li>

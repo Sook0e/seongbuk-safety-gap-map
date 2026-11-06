@@ -78,7 +78,7 @@ export default function AdminList() {
               <tr key={r.id} className="border-b border-gray-100 last:border-0 hover:bg-blue-50/50">
                 <td data-label="우선순위" className="whitespace-nowrap px-3.5 py-3.5 font-bold">{r.priority.total}</td>
                 <td data-label="번호" className="whitespace-nowrap px-3.5"><Link to={`/admin/reports/${r.id}`} className="font-semibold text-brand">#{r.id}</Link></td>
-                <td data-label="접수" className="whitespace-nowrap px-3.5 text-sub">{new Date(r.created_at).toLocaleString('ko-KR')}</td>
+                <td data-label="접수" className="whitespace-nowrap px-3.5 text-sub">{new Date(r.created_at).toLocaleString('ko-KR')}{r.photo_age_days > 0 && <span className={`block text-xs ${r.stale_photo ? 'font-semibold text-amber-700' : 'text-gray-400'}`}>사진은 {r.photo_age_days}일 전 촬영</span>}</td>
                 <td data-label="출처" className="whitespace-nowrap px-3.5">
                   <span className={`rounded px-1.5 py-0.5 text-xs ${sourceBadge(r)}`}>{r.source_label}</span>
                   {r.is_demo && <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-800">체험</span>}
