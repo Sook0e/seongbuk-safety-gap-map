@@ -1,6 +1,7 @@
 import Brand from '../components/Brand.jsx'
 import { useEffect, useRef, useState } from 'react'
 import BeforeAfter from '../components/BeforeAfter.jsx'
+import ClientIdBox from '../components/ClientIdBox.jsx'
 import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
 import { formatTaken } from '../lib/exif.js'
@@ -51,7 +52,7 @@ export default function MyReports() {
 
   if (error) return <p className="p-5 text-danger">불러오기 실패: {error}</p>
   if (!list) return <p className="p-5">불러오는 중…</p>
-  if (!list.length) return <section className="min-h-full bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p></section>
+  if (!list.length) return <section className="min-h-full bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p><div className="mt-4"><ClientIdBox /></div></section>
 
   // 접수 후 경과일, 완료까지 걸린 일수, 처리 대상 아님 사유 (리뷰: '처리 상황도 이유도 모른다'는 불만 대응)
   const days = (a, b = Date.now()) => Math.max(0, Math.floor((new Date(b).getTime() - new Date(a).getTime()) / 86400000))
@@ -77,7 +78,7 @@ export default function MyReports() {
         const ac = r.aftercare ?? { fixed: 0, not_fixed: 0, recurrence: null }
         const mine = myReports.vote(r.public_id)
         const photos = (r.photos?.length ? r.photos : [{ photo_url: r.photo_url }]).filter((p) => p.photo_url)
-        const compare = r.status === 'done' && r.photo_url && r.after_photo_url
+        const compare = r.photo_url && r.after_photo_url // 조치 후 사진이 올라오면 완료 처리 전이라도 바로 전·후를 비교해 볼 수 있게
         return (
           <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-brand' : 'border border-line'}`}>
             <div className="flex items-center justify-between">
@@ -131,6 +132,7 @@ export default function MyReports() {
           </article>
         )
       })}
+      <ClientIdBox />
     </section>
   )
 }

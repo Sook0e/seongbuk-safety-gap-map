@@ -62,6 +62,9 @@
 ## report_links — 재발 연결
 `report_id`(새 제보), `prior_report_id`(이전에 완료된 제보), `days_after_done`, `created_at`. 새 표, 자동 생성.
 
+## report_clients — 제보를 보낸 브라우저 식별값
+`report_id`(제보당 하나), `client_key`(브라우저가 만든 무작위 값), `nickname`(주민이 정한 별명, 선택, 20자), `created_at`. 같은 브라우저에서 올라온 제보를 담당자가 확인하는 용도다. 사람을 특정하지 못하고(브라우저 데이터 삭제·시크릿 모드·다른 기기면 다른 값), 식별값 자체는 어떤 응답에도 내보내지 않는다. 새 표라서 서버가 켜질 때 자동 생성(ALTER 없음).
+
 ## status_history — 처리 이력
 | 열 | 형식 | 설명 |
 | --- | --- | --- |

@@ -27,7 +27,7 @@ def list_reports(source: str | None = None, status: str | None = None, category:
 
 def _filtered(db: Session, source, status, category, include_demo, sort, season=None) -> list[dict]:
     q = select(Report).options(selectinload(Report.history), selectinload(Report.photo), selectinload(Report.photos),
-                               selectinload(Report.feedback), selectinload(Report.recurrence_link))
+                               selectinload(Report.feedback), selectinload(Report.recurrence_link), selectinload(Report.client))
     if source:
         q = q.where(Report.source == source)
     if status:
