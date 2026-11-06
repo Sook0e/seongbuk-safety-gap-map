@@ -48,13 +48,6 @@ export const api = {
   adminReports: (params = {}) => request(`/api/admin/reports?${new URLSearchParams(params)}`),
   adminPlaceHistory: (id) => request(`/api/admin/reports/${id}/place-history`), // 같은 곳 이력(조치 전후 사진, 재발)
   adminReport: (id) => request(`/api/admin/reports/${id}`),
-  rewardsMe: (clientKey) => request(`/api/rewards/me?client_key=${encodeURIComponent(clientKey)}`), // 내 포인트
-  rewardPhoneRequest: (clientKey, phone) => request('/api/rewards/phone/request', json('POST', { client_key: clientKey, phone })),
-  rewardPhoneVerify: (clientKey, phone, code) => request('/api/rewards/phone/verify', json('POST', { client_key: clientKey, phone, code })),
-  rewardRedeem: (clientKey, amount) => request('/api/rewards/redeem', json('POST', { client_key: clientKey, amount })),
-  adminApproveReward: (id) => request(`/api/admin/reports/${id}/reward`, json('POST', {})), // 제보 보상 승인(적립)
-  adminRedeems: (status) => request(`/api/admin/rewards/redeems${status ? `?status=${status}` : ''}`),
-  adminFinishRedeem: (id) => request(`/api/admin/rewards/redeems/${id}`, json('PATCH', {})),
   adminUpdate: (id, body) => request(`/api/admin/reports/${id}`, json('PATCH', body)),
   ledgerUrl: (params = {}) => `/api/admin/ledger.xlsx?${new URLSearchParams(params)}`, // 점검 대장 엑셀 (a 태그 href로 바로 내려받기)
   adminCreate: (body) => request('/api/admin/reports', json('POST', body)),

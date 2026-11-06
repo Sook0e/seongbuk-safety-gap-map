@@ -169,8 +169,6 @@ class AdminReportOut(ReportOut):
     gap_rule: str | None = Field(None, description="공백 탐지 항목의 규칙 이름")
     gap_reason: str | None = None
     priority: Priority
-    reward_points: int | None = Field(None, description="보상 승인 결과 적립 포인트. 아직 승인하지 않았으면 null, 0이면 중복·한도로 적립 안 함")
-    reward_note: str | None = Field(None, description="0점인 이유")
     season: str | None = Field(None, description="접수 달 기준 계절 점검 시기(해빙기 2~3월, 우기 5~6월, 동절기 11~12월. 팀 가정)")
     photo_age_days: int | None = Field(None, description="대표 사진 촬영일이 접수일보다 며칠 앞서는지. 촬영일 정보가 없으면 null")
     same_client_reports: int | None = Field(None, description="같은 브라우저(client_key)에서 올라온 제보 수(이 제보 포함). 식별값이 없으면 null")
