@@ -88,10 +88,17 @@ export default function MapPage() {
       }
       const lls = items.map((f) => [f.geometry.coordinates[1], f.geometry.coordinates[0]])
       const center = lls.reduce((a, c) => [a[0] + c[0] / lls.length, a[1] + c[1] / lls.length], [0, 0])
-      const size = Math.min(56, 30 + items.length * 2)
+      const size = Math.min(60, 34 + items.length * 2)
+      // 둘레 고리를 상태별 색 비율로 칠해서, 묶음 안에서도 접수 / 검토·조치 중 / 조치 완료가 구분되게 한다
+      const n = items.length
+      const cnt = { received: 0, mid: 0, done: 0 }
+      items.forEach((f) => { const st = f.properties.status; cnt[st === 'done' ? 'done' : st === 'received' ? 'received' : 'mid'] += 1 })
+      const parts = [['received', COLORS.received], ['mid', COLORS.review], ['done', COLORS.done]].filter(([k]) => cnt[k] > 0)
+      let acc = 0
+      const ring = parts.map(([k, c]) => { const from = acc; acc += (cnt[k] / n) * 100; return `${c} ${from}% ${acc}%` }).join(',')
       const icon = L.divIcon({
         className: '', iconSize: [size, size],
-        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#001A47;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font:700 14px/1 Pretendard,sans-serif">${items.length}</div>`,
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:conic-gradient(${ring});box-shadow:0 1px 4px rgba(0,0,0,.35);border:2px solid #fff;display:flex;align-items:center;justify-content:center"><div style="width:${size - 16}px;height:${size - 16}px;border-radius:50%;background:#fff;color:#001A47;display:flex;align-items:center;justify-content:center;font:700 14px/1 Pretendard,sans-serif">${n}</div></div>`,
       })
       L.marker(center, { icon, keyboard: false })
         .on('click', () => { setSelected(null); map.current.fitBounds(L.latLngBounds(lls), { padding: [70, 70], maxZoom: MAX_CLUSTER_ZOOM }) })
