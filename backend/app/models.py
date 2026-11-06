@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -71,6 +71,9 @@ class Report(Base):
         back_populates="report", order_by="StatusHistory.created_at", cascade="all, delete-orphan")
     photos: Mapped[list[ReportPhoto]] = relationship(
         back_populates="report", order_by="ReportPhoto.position", cascade="all, delete-orphan")
+    feedback: Mapped[list[ReportFeedback]] = relationship(back_populates="report", cascade="all, delete-orphan")
+    recurrence_link: Mapped[ReportLink | None] = relationship(
+        foreign_keys="ReportLink.report_id", back_populates="report", uselist=False, cascade="all, delete-orphan")
 
 
 class ReportPhoto(Base):
@@ -86,6 +89,37 @@ class ReportPhoto(Base):
     taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # 사진 촬영 일시 (사진 속 위치 정보는 지우지만 일시는 남김)
 
     report: Mapped[Report] = relationship(back_populates="photos")
+
+
+class ReportFeedback(Base):
+    """조치 완료 뒤 주민 확인: '고쳐졌어요(fixed)' / '아직 그대로예요(not_fixed)'. 로그인이 없어 브라우저가 만든 client_key로
+    한 브라우저당 한 표만 받는다(바꿀 수는 있음). 한 사람이 여러 브라우저를 쓰면 늘 수 있어 담당자 확인이 필요하다."""
+    __tablename__ = "report_feedback"
+    __table_args__ = (UniqueConstraint("report_id", "client_key", name="uq_feedback_report_client"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("reports.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(12))                     # fixed / not_fixed
+    client_key: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    report: Mapped[Report] = relationship(back_populates="feedback")
+
+
+class ReportLink(Base):
+    """같은 곳에서 조치 완료 뒤 다시 들어온 제보를 이전 제보와 잇는 기록(재발). 새 제보 하나에 이전 제보 하나."""
+    __tablename__ = "report_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("reports.id"), unique=True, index=True)   # 새로 들어온 제보
+    related_id: Mapped[int] = mapped_column(ForeignKey("reports.id"), index=True)               # 이전(조치 완료) 제보
+    kind: Mapped[str] = mapped_column(String(12), default="recurrence")
+    days_after_done: Mapped[int] = mapped_column(Integer, default=0)
+    distance_m: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    report: Mapped[Report] = relationship(foreign_keys=[report_id], back_populates="recurrence_link")
+    related: Mapped[Report] = relationship(foreign_keys=[related_id])
 
 
 class StatusHistory(Base):

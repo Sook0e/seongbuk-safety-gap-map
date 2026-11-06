@@ -1,18 +1,19 @@
 """주민 화면용 제보 API. 로그인이 없으므로 '내 제보'는 브라우저에 저장한 public_id 목록으로 찾는다."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import asin, cos, radians, sin, sqrt
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from .. import departments, serialize
-from ..constants import CROSS_CHECK_MIN, KST, STATUSES
+from .. import departments, scoring, serialize
+from ..constants import (CROSS_CHECK_MIN, KST, NOT_FIXED_MIN, RECENT_DONE_DAYS, RECUR_LOOKBACK_DAYS, STATUSES,
+                         radius_for)
 from ..db import get_db
-from ..models import Photo, Report, ReportPhoto, StatusHistory
-from ..schemas import NearbyReport, PublicStats, ReportCreate, ReportOut
+from ..models import Photo, Report, ReportFeedback, ReportLink, ReportPhoto, StatusHistory, now
+from ..schemas import FeedbackIn, NearbyReport, PublicStats, ReportCreate, ReportOut
 
 router = APIRouter(tags=["reports"])
 
@@ -42,11 +43,42 @@ def create_report(body: ReportCreate, db: Session, source: str) -> Report:
     db.add(r)
     db.commit()
     db.refresh(r)
+    _link_recurrence(db, r, body.accuracy_m)
     return r
 
 
+def _link_recurrence(db: Session, r: Report, accuracy_m: float | None) -> None:
+    """같은 곳(반경 안)·같은 유형에서 조치 완료된 제보가 RECUR_LOOKBACK_DAYS 안에 있으면 이전 제보와 잇는다(재발).
+    이전 제보의 처리 이력에도 한 줄 남기고, 처음 제보한 사람의 빨간 점이 켜지게 news_at을 갱신한다."""
+    if r.source != "resident" or r.is_demo or r.lat is None or r.lon is None or not r.ai_category:
+        return
+    radius = radius_for(accuracy_m)
+    t = datetime.now(timezone.utc)
+    best = None
+    q = _q().where(Report.source == "resident", Report.is_demo.is_(False), Report.false_positive.is_(False),
+                   Report.status == "done", Report.id != r.id, Report.ai_category == r.ai_category,
+                   Report.lat.is_not(None), Report.lon.is_not(None))
+    for p in db.scalars(q):
+        done = scoring.done_at(p)
+        d = _meters(r.lat, r.lon, p.lat, p.lon)
+        if done is None or d > radius or (t - done) > timedelta(days=RECUR_LOOKBACK_DAYS):
+            continue
+        if best is None or done > best[1]:
+            best = (p, done, d)
+    if best is None:
+        return
+    p, done, d = best
+    days = max(0, (t - done).days)
+    db.add(ReportLink(report_id=r.id, related_id=p.id, kind="recurrence", days_after_done=days, distance_m=round(d)))
+    p.history.append(StatusHistory(from_status="done", to_status="done", note=f"같은 곳에서 조치 {days}일 만에 다시 제보가 들어왔어요 (재발)"))
+    p.news_at = now()
+    db.commit()
+    db.refresh(r)
+
+
 def _q():
-    return select(Report).options(selectinload(Report.history), selectinload(Report.photo), selectinload(Report.photos))
+    return select(Report).options(selectinload(Report.history), selectinload(Report.photo), selectinload(Report.photos),
+                                  selectinload(Report.feedback), selectinload(Report.recurrence_link))
 
 
 @router.post("/api/reports", response_model=ReportOut)
@@ -66,8 +98,8 @@ def my_reports(ids: str = Query(..., description="public_id를 쉼표로 이어 
 def reports_map(include_demo: bool = False, db: Session = Depends(get_db)) -> dict:
     """주민 지도의 '주민 제보 / 조치 완료' 점. 메모·사진은 넣지 않는다 (하단 시트에서 개별 조회).
     공백 탐지 항목(source=gap)은 /api/gaps 레이어로 따로 나가므로 여기서는 주민 제보만."""
-    q = select(Report).where(Report.source == "resident", Report.lat.is_not(None), Report.lon.is_not(None),
-                             Report.false_positive.is_(False))
+    q = select(Report).options(selectinload(Report.feedback)).where(
+        Report.source == "resident", Report.lat.is_not(None), Report.lon.is_not(None), Report.false_positive.is_(False))
     if not include_demo:
         q = q.where(Report.is_demo.is_(False))
     feats = [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [r.lon, r.lat]},
@@ -76,6 +108,8 @@ def reports_map(include_demo: bool = False, db: Session = Depends(get_db)) -> di
                              "facility_label": departments.facility_label(r.facility_type),
                              "confirm_count": r.confirm_count or 0,
                              "cross_checked": (r.confirm_count or 0) >= CROSS_CHECK_MIN,
+                             "recheck": r.status == "done" and scoring.feedback_counts(r)[0] >= 1
+                             and scoring.feedback_counts(r)[0] > scoring.feedback_counts(r)[1],
                              "created_at": serialize.utc(r.created_at).isoformat()}}
              for r in db.scalars(q)]
     return {"type": "FeatureCollection", "features": feats}
@@ -89,20 +123,36 @@ def _meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 @router.get("/api/reports/nearby", response_model=list[NearbyReport])
-def nearby_reports(lat: float, lon: float, category: str | None = None,
-                   radius_m: int = Query(50, ge=10, le=200), db: Session = Depends(get_db)):
+def nearby_reports(lat: float, lon: float, category: str | None = None, accuracy: float | None = Query(None, ge=0),
+                   radius_m: int | None = Query(None, ge=10, le=200), db: Session = Depends(get_db)):
     """같은 곳에 이미 접수된 주민 제보(진행 상황 포함). 중복 제보를 줄이려고 제보 화면에서 보여 준다.
     체험·오탐·공백 항목은 뺀다. category를 주면 AI 분류가 같은 것만. 가까운 순 최대 5건. 사진·메모는 넣지 않음."""
-    q = select(Report).where(Report.source == "resident", Report.is_demo.is_(False), Report.false_positive.is_(False),
-                             Report.lat.is_not(None), Report.lon.is_not(None))
+    radius = radius_m or radius_for(accuracy)
+    q = _q().where(Report.source == "resident", Report.is_demo.is_(False), Report.false_positive.is_(False),
+                   Report.lat.is_not(None), Report.lon.is_not(None))
     if category:
         q = q.where(Report.ai_category == category)
-    found = sorted(((_meters(lat, lon, r.lat, r.lon), r) for r in db.scalars(q)), key=lambda x: x[0])
-    return [{"public_id": r.public_id, "category": r.ai_category, "status": r.status,
-             "status_label": STATUSES.get(r.status, r.status), "created_at": serialize.utc(r.created_at),
-             "distance_m": round(d), "confirm_count": r.confirm_count or 0, "dept": r.dept,
-             "facility_label": departments.facility_label(r.facility_type)}
-            for d, r in found if d <= radius_m][:5]
+    t = datetime.now(timezone.utc)
+    out = []
+    for d, r in sorted(((_meters(lat, lon, r.lat, r.lon), r) for r in db.scalars(q)), key=lambda x: x[0]):
+        if d > radius:
+            continue
+        state, ago = "open", None
+        if r.status == "done":
+            done = scoring.done_at(r)
+            if done is None:
+                continue
+            ago = max(0, (t - done).days)
+            if ago > RECUR_LOOKBACK_DAYS:
+                continue  # 너무 오래전에 조치된 곳은 같은 곳으로 보지 않는다
+            state = "recent_done" if ago <= RECENT_DONE_DAYS else "old_done"
+        nf, fx = scoring.feedback_counts(r)
+        out.append({"public_id": r.public_id, "category": r.ai_category, "status": r.status,
+                    "status_label": STATUSES.get(r.status, r.status), "created_at": serialize.utc(r.created_at),
+                    "distance_m": round(d), "state": state, "done_days_ago": ago, "fixed": fx, "not_fixed": nf,
+                    "confirm_count": r.confirm_count or 0, "dept": r.dept,
+                    "facility_label": departments.facility_label(r.facility_type)})
+    return out[:5]
 
 
 @router.get("/api/stats", response_model=PublicStats)
@@ -126,6 +176,25 @@ def confirm(public_id: str, db: Session = Depends(get_db)):
     if not r or r.source == "gap":
         raise HTTPException(404, "제보 없음")
     r.confirm_count = (r.confirm_count or 0) + 1
+    db.commit()
+    db.refresh(r)
+    return serialize.report(r)
+
+
+@router.post("/api/reports/{public_id}/feedback", response_model=ReportOut)
+def feedback(public_id: str, body: FeedbackIn, db: Session = Depends(get_db)):
+    """조치 완료된 제보에 '고쳐졌어요(fixed)' / '아직 그대로예요(not_fixed)'. 한 브라우저(client_key)당 한 표이고 바꿀 수 있다.
+    로그인이 없어 한 사람이 여러 브라우저로 늘릴 수 있으므로 우선순위 가산은 NOT_FIXED_MIN명 이상일 때만 하고 담당자가 확인한다."""
+    r = db.scalars(_q().where(Report.public_id == public_id)).first()
+    if not r or r.source == "gap":
+        raise HTTPException(404, "제보 없음")
+    if r.status != "done":
+        raise HTTPException(400, "조치 완료된 제보에만 보낼 수 있음")
+    mine = next((f for f in r.feedback if f.client_key == body.client_key), None)
+    if mine:
+        mine.kind = body.kind
+    else:
+        r.feedback.append(ReportFeedback(kind=body.kind, client_key=body.client_key))
     db.commit()
     db.refresh(r)
     return serialize.report(r)

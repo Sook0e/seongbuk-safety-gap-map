@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,6 +48,7 @@ class ReportCreate(BaseModel):
     facility_type: str | None = Field(None, description="시설 종류 코드 (GET /api/meta 의 facility_types). 없으면 unknown")
     taken_at: datetime | None = Field(None, description="대표 사진 촬영 일시")
     photo_memo: str | None = Field(None, max_length=200, description="대표 사진 메모")
+    accuracy_m: float | None = Field(None, description="폰이 알려 준 위치 정확도(m). '같은 곳' 판정 반경을 정하는 데 쓴다. 핀을 직접 옮겼으면 비움")
     extra_photos: list[PhotoIn] = Field(default_factory=list, max_length=3, description="대표 사진 말고 더 붙이는 사진 (최대 3장)")
 
 
@@ -70,6 +72,25 @@ class ReportPhotoOut(BaseModel):
     taken_at: datetime | None = None
 
 
+class FeedbackIn(BaseModel):
+    kind: Literal["fixed", "not_fixed"] = Field(description="fixed 고쳐졌어요 / not_fixed 아직 그대로예요")
+    client_key: str = Field(min_length=8, max_length=40, description="브라우저가 만든 무작위 값. 한 브라우저당 한 표")
+
+
+class RecurrenceOut(BaseModel):
+    days_after_done: int = Field(description="이전 제보가 완료된 뒤 며칠 만에 같은 곳에서 다시 제보됐는지")
+    admin_id: int | None = Field(None, description="관리자 응답에만 있음")
+
+
+class AftercareOut(BaseModel):
+    """조치 완료 뒤 주민 확인과 재발 연결."""
+    fixed: int = 0
+    not_fixed: int = 0
+    recurrence: RecurrenceOut | None = Field(None, description="이 제보가 이전 제보의 재발이면 이전 제보 정보")
+    recheck_due: bool | None = Field(None, description="관리자 응답에만 있음. 완료 후 RECHECK_DAYS가 지났는데 '고쳐졌어요' 확인이 없음")
+    recheck_at: datetime | None = Field(None, description="관리자 응답에만 있음. 재점검 예정일")
+
+
 class ReportOut(BaseModel):
     """주민 화면용 (내 제보, 지도 하단 시트)."""
     public_id: str
@@ -91,6 +112,7 @@ class ReportOut(BaseModel):
     confirm_count: int = Field(0, description="같은 곳 확인(나도 봤어요) 인원")
     cross_checked: bool = Field(False, description="확인 인원이 CROSS_CHECK_MIN(3명) 이상이면 true. 로그인이 없어 브라우저 기준")
     photos: list[ReportPhotoOut] = Field(default_factory=list, description="붙은 사진 전체(대표 사진 포함, 최대 4장). 사진별 메모·촬영 일시")
+    aftercare: AftercareOut = Field(default_factory=AftercareOut, description="조치 완료 뒤 주민 확인(고쳐졌어요/아직이에요)과 재발 연결")
     not_target: bool = Field(False, description="담당자가 '처리 대상 아님'(AI 오탐 표시)으로 닫았으면 true. 이유는 dept_note에 적는다")
     history: list[HistoryOut]
 
@@ -103,6 +125,10 @@ class NearbyReport(BaseModel):
     status_label: str
     created_at: datetime
     distance_m: int
+    state: Literal["open", "recent_done", "old_done"] = Field("open", description="open 진행 중 / recent_done 완료 후 RECENT_DONE_DAYS 이내 / old_done 그보다 오래전 완료(재발 후보)")
+    done_days_ago: int | None = Field(None, description="완료된 지 며칠 됐는지 (완료 건만)")
+    fixed: int = 0
+    not_fixed: int = 0
     confirm_count: int = 0
     dept: str | None = None
     facility_label: str | None = None
@@ -137,6 +163,9 @@ class AdminReportOut(ReportOut):
     gap_rule: str | None = Field(None, description="공백 탐지 항목의 규칙 이름")
     gap_reason: str | None = None
     priority: Priority
+    season: str | None = Field(None, description="접수 달 기준 계절 점검 시기(해빙기 2~3월, 우기 5~6월, 동절기 11~12월. 팀 가정)")
+    photo_age_days: int | None = Field(None, description="대표 사진 촬영일이 접수일보다 며칠 앞서는지. 촬영일 정보가 없으면 null")
+    stale_photo: bool = Field(False, description="photo_age_days가 STALE_PHOTO_DAYS 초과(옛 사진 재사용 의심). 점수에는 반영하지 않음")
 
 
 class Screening(BaseModel):
@@ -154,6 +183,29 @@ class OnTime(BaseModel):
     rate_pct: int | None = Field(None, description="on_time / due_total (%). 대상이 없으면 null")
 
 
+class AftercareSummary(BaseModel):
+    reopened: int = Field(description="조치 완료인데 주민이 '아직 그대로'라고 한 건(그대로가 고쳐짐보다 많음)")
+    recurred: int = Field(description="같은 곳에서 조치 완료 뒤 다시 제보돼 이전 제보와 이어진 건")
+    recheck_due: int = Field(description="완료 후 RECHECK_DAYS가 지났는데 '고쳐졌어요' 확인이 없는 건")
+
+
+class PlaceHistoryItem(BaseModel):
+    """같은 곳에서 있었던 제보 이력 한 줄 (관리자 상세의 장소 이력)."""
+    id: int
+    public_id: str
+    created_at: datetime
+    status: str
+    status_label: str
+    done_at: datetime | None = None
+    category: str | None = None
+    distance_m: int
+    relation: Literal["self", "prior", "later", "nearby"] = "nearby"
+    photo_url: str | None = None
+    after_photo_url: str | None = None
+    fixed: int = 0
+    not_fixed: int = 0
+
+
 class AdminSummary(BaseModel):
     today_new: int = Field(description="오늘(한국 시간) 들어온 주민·CCTV 제보 (공백 후보 제외)")
     overdue_open: int = Field(description="기한이 지났는데 완료가 아닌 건")
@@ -162,6 +214,7 @@ class AdminSummary(BaseModel):
     open_by_status: dict[str, int]
     on_time: OnTime = Field(description="기한 내 조치 시작률 (주민·CCTV 제보, 체험용·오탐 제외)")
     screening: Screening = Field(description="데이터 사전 점검 지표 (docs/benchmark.md)")
+    aftercare: AftercareSummary = Field(description="조치 완료 이후 사후 관리 건수")
 
 
 class PublicStats(BaseModel):

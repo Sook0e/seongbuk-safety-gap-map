@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from . import config
+from .constants import NOT_FIXED_MIN, RECUR_POINTS, REOPEN_POINTS
 
 # --- 점수 상수 (한곳에 모음) ---
 TYPE_POINTS = {"철근 노출": 40, "박리": 30, "콘크리트 균열": 20, "백태/누수": 15, "기타": 5}
@@ -156,6 +157,12 @@ def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 
+def feedback_counts(r) -> tuple[int, int]:
+    """(아직 그대로예요 수, 고쳐졌어요 수). r.feedback이 로드돼 있어야 한다."""
+    fb = getattr(r, "feedback", None) or []
+    return sum(1 for f in fb if f.kind == "not_fixed"), sum(1 for f in fb if f.kind == "fixed")
+
+
 def score(r) -> dict:
     """{total, items[{label, points, note}], urgent, due_at, overdue}. r는 models.Report."""
     items: list[dict] = []
@@ -196,6 +203,14 @@ def score(r) -> dict:
     if r.confirm_count:
         pts = min(r.confirm_count * CONFIRM_POINTS_EACH, CONFIRM_POINTS_MAX)
         items.append({"label": "같은 곳 확인", "points": pts, "note": f"{r.confirm_count}명"})
+
+    # 조치 완료 뒤 사후 관리: 주민이 '아직 그대로'라고 하거나, 같은 곳에서 다시 제보되면(재발) 가산
+    nf, fx = feedback_counts(r)
+    if r.status == "done" and nf >= NOT_FIXED_MIN and nf > fx:
+        items.append({"label": "조치 후에도 그대로(주민 재확인)", "points": REOPEN_POINTS, "note": f"아직 그대로 {nf}명, 고쳐졌어요 {fx}명"})
+    link = getattr(r, "recurrence_link", None)
+    if link is not None:
+        items.append({"label": "재발(같은 곳에서 다시 제보)", "points": RECUR_POINTS, "note": f"이전 제보 조치 후 {link.days_after_done}일 만에"})
 
     total = sum(i["points"] for i in items)
     if r.false_positive:

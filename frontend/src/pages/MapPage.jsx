@@ -110,7 +110,9 @@ export default function MapPage() {
       if (items.length === 1) {
         const f = items[0]
         const [lon, lat] = f.geometry.coordinates
-        L.circleMarker([lat, lon], { radius: 6, color: f._color, fillColor: f._color, fillOpacity: 0.8, weight: 1 })
+        // 조치 완료 뒤 '아직 그대로'라는 주민 의견이 더 많은 곳은 빨간 테두리로 표시
+        const recheck = f.properties.recheck
+        L.circleMarker([lat, lon], { radius: recheck ? 8 : 6, color: recheck ? '#dc2626' : f._color, fillColor: f._color, fillOpacity: 0.8, weight: recheck ? 3 : 1 })
           .on('click', () => { setSelected(f); setConfirmMsg('') })
           .addTo(layer.current)
         return
@@ -156,6 +158,7 @@ export default function MapPage() {
         {LEGEND.map(([k, label]) => (
           <div key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: COLORS[k] }} />{label}</div>
         ))}
+        <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border-2 border-red-600" style={{ background: COLORS.done }} />조치 후 재확인 필요</div>
         <div className="flex items-center gap-1"><span className="h-2 w-3 border border-red-600 bg-red-300" />어린이보호구역</div>
       </div>
       {p && (
@@ -165,6 +168,7 @@ export default function MapPage() {
           <div className="text-[13px] text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
           <div className="font-semibold">{p.category ?? '분류 없음'}</div>
           <div className="text-[13px] text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
+          {p.recheck && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] leading-snug">조치 완료 뒤에도 '아직 그대로'라는 주민 의견이 더 많은 곳이에요. 담당자가 다시 확인합니다.</p>}
           {p.status !== 'done' && (
             <button type="button" disabled={myReports.confirmed(p.public_id) || myReports.ids().includes(p.public_id)}
               onClick={() => confirmSeen(p.public_id)}

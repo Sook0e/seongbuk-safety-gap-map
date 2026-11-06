@@ -56,6 +56,12 @@
 
 새 표라서 서버가 켜질 때 `create_all`이 자동으로 만든다 (배포 DB에 SQL을 따로 실행할 필요 없음). 이 표가 생기기 전의 제보는 행이 없고, 그때는 `reports.photo_key` 한 장만 있는 것으로 본다.
 
+## report_feedback — 조치 완료 뒤 주민 확인
+`report_id`, `client_key`(브라우저 무작위 값, 제보당 한 표), `kind`(fixed｜not_fixed), `created_at`. 새 표라서 서버가 켜질 때 자동으로 만들어짐(ALTER 없음).
+
+## report_links — 재발 연결
+`report_id`(새 제보), `prior_report_id`(이전에 완료된 제보), `days_after_done`, `created_at`. 새 표, 자동 생성.
+
 ## status_history — 처리 이력
 | 열 | 형식 | 설명 |
 | --- | --- | --- |

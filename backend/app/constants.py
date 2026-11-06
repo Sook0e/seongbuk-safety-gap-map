@@ -14,6 +14,29 @@ STATUS_ORDER = list(STATUSES)
 # 로그인이 없어 브라우저(localStorage) 기준이라 한 사람이 여러 브라우저로 누르면 늘 수 있음. 시연·설계 단계의 한계로 문서에 남김.
 CROSS_CHECK_MIN = 3
 
+# 조치 완료 이후(사후 관리). 아래 숫자는 모두 팀 가정이다. 근거 자료가 없고 파일럿에서 담당 부서와 정한다.
+AFTERCARE_RADIUS_M = 50       # '같은 곳'으로 보는 기본 반경(m). 폰이 위치 정확도를 알려 주면 그에 맞춰 넓힘
+AFTERCARE_RADIUS_MIN_M = 30   # 건물 사이 GPS 오차를 감안한 최소 반경
+AFTERCARE_RADIUS_MAX_M = 200
+RECENT_DONE_DAYS = 14         # 완료 후 이 기간 안에 같은 곳 제보가 오면 새 제보 대신 '아직 그대로예요'로 연결
+RECUR_LOOKBACK_DAYS = 180     # 완료 후 이 기간 안에 같은 곳에서 다시 제보되면 '재발'로 기록
+RECHECK_DAYS = 30             # 완료 후 이 기간이 지나도 '고쳐졌어요' 확인이 없으면 재점검 대상
+NOT_FIXED_MIN = 2             # '아직 그대로예요'가 이 인원 이상(그리고 고쳐졌어요보다 많음)이면 우선순위 가산
+REOPEN_POINTS = 15            # 조치 후에도 그대로라는 주민 재확인 가산점
+RECUR_POINTS = 10             # 재발 가산점
+
+# 사진 신뢰 확인과 계절 표시. 이 값도 팀 가정이다 (근거 자료 없음, 담당 부서와 정함).
+STALE_PHOTO_DAYS = 3          # 촬영일이 접수일보다 이 일수 넘게 앞서면 '오래된 사진'으로 표시 (옛 사진 재사용 확인용, 점수에는 반영하지 않음)
+SEASONS = {2: "해빙기", 3: "해빙기", 5: "우기", 6: "우기", 11: "동절기", 12: "동절기"}  # 접수 달(한국 시간) → 계절 점검 시기
+
+
+def radius_for(accuracy_m: float | None) -> int:
+    """같은 곳 판정 반경(m). 위치 정확도(m)를 모르면 기본값, 알면 1.5배를 최소~최대 범위로 자른다."""
+    if not accuracy_m or accuracy_m <= 0:
+        return AFTERCARE_RADIUS_M
+    return int(min(AFTERCARE_RADIUS_MAX_M, max(AFTERCARE_RADIUS_MIN_M, round(accuracy_m * 1.5))))
+
+
 # 제보 출처 (관리자 목록 필터)
 SOURCES = {"resident": "주민", "gap": "공백 탐지", "cctv": "CCTV"}
 

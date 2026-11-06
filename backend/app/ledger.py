@@ -13,7 +13,7 @@ from xml.sax.saxutils import escape
 from .constants import KST
 
 HEADERS = ["접수번호", "접수일시", "출처", "유형·규칙", "AI 신뢰도(%)", "담당 부서", "위치(주소)", "위도", "경도",
-           "우선순위 점수", "처리 상태", "조치 시작 기한", "기한 초과", "완료일시", "담당자 메모", "주민 확인(명)", "교차확인", "오탐", "촬영 일시", "사진 수"]
+           "우선순위 점수", "처리 상태", "조치 시작 기한", "기한 초과", "완료일시", "담당자 메모", "주민 확인(명)", "교차확인", "오탐", "촬영 일시", "사진 수", "재발", "주민 재확인"]
 
 
 def _kst(dt: datetime | None) -> str:
@@ -37,6 +37,8 @@ def rows_from(reports: list[dict]) -> list[list]:
             r["confirm_count"], "예" if r["cross_checked"] else "", "오탐" if r["false_positive"] else "",
             _kst(next((p["taken_at"] for p in r.get("photos", []) if p["position"] == 0 and p["taken_at"]), None)),
             len(r.get("photos", [])) or "",
+            (f"조치 후 {ac['recurrence']['days_after_done']}일 만에 재발" if (ac := r.get("aftercare") or {}).get("recurrence") else ""),
+            (f"아직 그대로 {ac.get('not_fixed', 0)} / 고쳐졌어요 {ac.get('fixed', 0)}" if ac.get("not_fixed") or ac.get("fixed") else ""),
         ])
     return out
 

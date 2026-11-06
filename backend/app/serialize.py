@@ -1,10 +1,10 @@
 """DB 행 → 응답 dict."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import departments, scoring, storage
-from .constants import CROSS_CHECK_MIN, SOURCES, STATUSES
+from .constants import CROSS_CHECK_MIN, KST, RECHECK_DAYS, SEASONS, SOURCES, STALE_PHOTO_DAYS, STATUSES
 from .models import Report
 
 
@@ -18,6 +18,42 @@ def utc(dt: datetime | None) -> datetime | None:
 
 def _url(key: str | None) -> str | None:
     return storage.url(key) if key else None
+
+
+def aftercare(r: Report, admin: bool = False) -> dict:
+    """조치 완료 뒤 주민 확인(고쳐졌어요/아직 그대로예요)과 재발 연결. 이전 제보의 public_id는 내보내지 않는다."""
+    nf, fx = scoring.feedback_counts(r)
+    link = r.recurrence_link
+    out: dict = {"fixed": fx, "not_fixed": nf,
+                 "recurrence": ({"days_after_done": link.days_after_done, "admin_id": link.related_id if admin else None}
+                                if link is not None else None)}
+    if admin:
+        done = scoring.done_at(r) if r.status == "done" else None
+        due = done + timedelta(days=RECHECK_DAYS) if done else None
+        out["recheck_at"] = utc(due)
+        out["recheck_due"] = bool(due and datetime.now(timezone.utc) >= due and fx == 0)
+    return out
+
+
+def place_item(r: Report, relation: str, distance_m: int) -> dict:
+    """관리자 상세의 '장소 이력' 한 줄."""
+    nf, fx = scoring.feedback_counts(r)
+    done = scoring.done_at(r) if r.status == "done" else None
+    after = next((h.photo_key for h in reversed(r.history) if h.photo_key), None)
+    return {"id": r.id, "public_id": r.public_id, "created_at": utc(r.created_at), "status": r.status,
+            "status_label": STATUSES.get(r.status, r.status), "done_at": utc(done), "category": r.ai_category,
+            "distance_m": distance_m, "relation": relation, "photo_url": _url(r.photo_key), "after_photo_url": _url(after),
+            "fixed": fx, "not_fixed": nf}
+
+
+def photo_check(r: Report) -> dict:
+    """대표 사진 촬영일과 접수일의 차이. 촬영일이 없으면 판단하지 않는다(None). 점수에는 쓰지 않고 담당자가 참고만 한다."""
+    first = next((p for p in r.photos if p.position == 0), None)
+    taken = utc(first.taken_at) if first and first.taken_at else None
+    if taken is None:
+        return {"photo_age_days": None, "stale_photo": False}
+    days = (utc(r.created_at) - taken).days
+    return {"photo_age_days": max(days, 0), "stale_photo": days > STALE_PHOTO_DAYS}
 
 
 def report(r: Report, admin: bool = False) -> dict:
@@ -39,11 +75,13 @@ def report(r: Report, admin: bool = False) -> dict:
         "dept_note": r.dept_note, "confirm_count": r.confirm_count or 0,
         "cross_checked": (r.confirm_count or 0) >= CROSS_CHECK_MIN,
         "not_target": bool(r.false_positive), "photos": photos, "history": history,
+        "aftercare": aftercare(r, admin),
     }
     if admin:
         out |= {"id": r.id, "updated_at": utc(r.updated_at), "source": r.source,
                 "source_label": SOURCES.get(r.source, r.source),
                 "dispatch": r.dispatch, "false_positive": r.false_positive, "true_category": r.true_category, "is_demo": r.is_demo,
                 "gap_rule": r.gap_rule, "gap_reason": r.gap_reason,
-                "priority": scoring.score(r)}
+                "priority": scoring.score(r), "season": SEASONS.get(utc(r.created_at).astimezone(KST).month),
+                **photo_check(r)}
     return out
