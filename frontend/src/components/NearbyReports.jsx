@@ -34,21 +34,21 @@ export default function NearbyReports({ pos, category }) {
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
       <p className="text-sm font-semibold">이 근처에 이미 접수된 제보가 {list.length}건 있어요</p>
-      <p className="text-xs text-sub">같은 문제라면 새로 보내지 않고 '나도 봤어요'를 눌러 주세요. 다른 문제라면 아래에서 그대로 제보하시면 됩니다.</p>
+      <p className="text-[13px] text-sub">같은 문제라면 새로 보내지 않고 '나도 봤어요'를 눌러 주세요. 다른 문제라면 아래에서 그대로 제보하시면 됩니다.</p>
       {list.map((r) => (
         <div key={r.public_id} className="flex items-center justify-between gap-2 rounded-lg bg-page px-3 py-2">
-          <div className="flex flex-col gap-0.5 text-[13px]">
+          <div className="flex flex-col gap-0.5 text-sm">
             <span className="font-medium">{r.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
-            <span className="text-xs text-sub">{r.status_label} · 접수 후 {daysSince(r.created_at)}일째 · 약 {r.distance_m}m · 확인 {r.confirm_count}명{r.dept && ` · ${r.dept}`}</span>
+            <span className="text-[13px] text-sub">{r.status_label} · 접수 후 {daysSince(r.created_at)}일째 · 약 {r.distance_m}m · 확인 {r.confirm_count}명{r.dept && ` · ${r.dept}`}</span>
           </div>
           <button type="button" disabled={myReports.confirmed(r.public_id) || myReports.ids().includes(r.public_id)}
             onClick={() => confirm(r.public_id)}
-            className="h-9 shrink-0 rounded-lg bg-brand px-3 text-[13px] font-semibold text-white disabled:opacity-40">
+            className="h-11 shrink-0 rounded-lg bg-brand px-3.5 text-sm font-semibold text-white disabled:opacity-40">
             {myReports.confirmed(r.public_id) ? '확인했어요' : '나도 봤어요'}
           </button>
         </div>
       ))}
-      {msg && <p className="text-xs text-sub">{msg}</p>}
+      {msg && <p className="text-[13px] text-sub">{msg}</p>}
     </div>
   )
 }

@@ -72,10 +72,10 @@ export default function MapPage() {
       <div className="absolute inset-x-0 top-0 z-[1000] flex flex-wrap gap-1.5 px-4 pt-4">
         {FILTERS.map(([k, label]) => (
           <button key={k} type="button" onClick={() => setFilter(k)}
-            className={`h-[34px] rounded-full px-3 text-[13px] ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>{label}</button>
+            className={`h-11 rounded-full px-4 text-sm ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>{label}</button>
         ))}
       </div>
-      <div className={`absolute ${p ? 'bottom-[280px]' : 'bottom-3'} right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-[11px]`}>
+      <div className={`absolute ${p ? 'bottom-[280px]' : 'bottom-3'} right-3 z-[1000] flex flex-col gap-1 rounded-[10px] border border-line bg-white px-2.5 py-2 text-xs`}>
         {LEGEND.map(([k, label]) => (
           <div key={k} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: COLORS[k] }} />{label}</div>
         ))}
@@ -85,9 +85,9 @@ export default function MapPage() {
         <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-2.5 rounded-t-[20px] border-t border-line bg-white px-5 pb-4 pt-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
           <div className="mx-auto h-1 w-10 rounded bg-line" />
           <button type="button" onClick={() => setSelected(null)} className="float-right text-sm text-sub">닫기</button>
-          <div className="text-xs text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
+          <div className="text-[13px] text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
           <div className="font-semibold">{p.category ?? '분류 없음'}</div>
-          <div className="text-xs text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
+          <div className="text-[13px] text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
           {p.status !== 'done' && (
             <button type="button" disabled={myReports.confirmed(p.public_id) || myReports.ids().includes(p.public_id)}
               onClick={() => confirmSeen(p.public_id)}
@@ -95,7 +95,7 @@ export default function MapPage() {
               {myReports.confirmed(p.public_id) ? '확인했어요' : '나도 봤어요 (+1)'}
             </button>
           )}
-          {confirmMsg && <p className="mt-1 text-xs text-gray-600">{confirmMsg}</p>}
+          {confirmMsg && <p className="mt-1 text-[13px] text-gray-600">{confirmMsg}</p>}
         </div>
       )}
     </div>
