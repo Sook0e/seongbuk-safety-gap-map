@@ -28,7 +28,7 @@ export const myReports = {
   },
   saveDraft: (d) => {
     try {
-      if (!d.memo && !d.photoMemo && (!d.facility || d.facility === 'unknown')) localStorage.removeItem(DRAFT)
+      if (!(d.photos?.length) && (!d.facility || d.facility === 'unknown')) localStorage.removeItem(DRAFT)
       else localStorage.setItem(DRAFT, JSON.stringify({ ...d, at: Date.now() }))
     } catch { /* 저장 불가 */ }
   },
