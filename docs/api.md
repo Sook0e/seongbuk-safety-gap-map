@@ -128,3 +128,4 @@
 - `GET /api/admin/corrections/summary` AI 유형 → 담당자가 고른 유형 쌍별 건수(`total`, `pairs[{ai, true, count, match}]`).
 - `POST /api/reports` 본문에 `client_key?`(8~40자, 브라우저 무작위 값) 추가. 응답에는 나가지 않는다. 관리자 제보 응답에 `same_client_reports`(같은 브라우저 제보 수, 이 제보 포함), `same_client_24h`(그중 이 제보 전후 24시간 안). 식별값이 없으면 null.
 - 식별번호·별명: `POST /api/reports` 본문에 `client_nickname?`(20자) 추가. 관리자 제보 응답에 `client_code`(식별값 앞 8자리, 주민이 '내 제보' 화면에서 보는 번호와 같음), `client_nickname`. 식별값 전체는 어느 응답에도 나가지 않는다.
+- 사진 공개 범위: `GET /api/reports?ids=`는 선택 인자 `client_key`(내 브라우저 식별값)를 받는다. **조치 완료 전 제보의 `photo_url`·`after_photo_url`·`photos`는 `client_key`가 제보를 보낸 브라우저와 같을 때만** 채워지고, 아니면 null/빈 목록이다. 조치 완료된 제보는 누구에게나 보인다. `GET /api/reports/{번호}`, `POST .../confirm`도 같은 규칙(식별값 없이 부르므로 완료 전 사진 없음).

@@ -200,3 +200,26 @@ def test_cancel_only_own_browser_and_only_before_review():
     assert client.patch(f"/api/admin/reports/{id2}", json={"status": "review"}).status_code == 200
     bad = client.post(f"/api/reports/{r2['public_id']}/cancel", json={"client_key": A})
     assert bad.status_code == 400
+
+
+def test_photos_hidden_until_done_except_for_owner():
+    A, B = "photo-key-aaaa0001", "photo-key-bbbb0002"
+    r = make(37.9700, 127.7000, client_key=A)
+    pid = r["public_id"]
+    assert r["photo_url"] and r["photos"]                                   # 제보한 사람의 응답에는 사진이 있음
+    anyone = client.get("/api/reports", params={"ids": pid}).json()[0]       # 번호만 아는 사람
+    assert anyone["photo_url"] is None and anyone["after_photo_url"] is None and anyone["photos"] == []
+    assert client.get("/api/reports", params={"ids": pid, "client_key": B}).json()[0]["photo_url"] is None   # 다른 브라우저
+    mine = client.get("/api/reports", params={"ids": pid, "client_key": A}).json()[0]
+    assert mine["photo_url"] and mine["photos"]                             # 본인 브라우저는 완료 전에도 보임
+    assert client.get(f"/api/reports/{pid}").json()["photo_url"] is None
+    assert client.post(f"/api/reports/{pid}/confirm").json()["photo_url"] is None   # 나도 봤어요 응답에도 사진 없음
+    # 식별값이 없던 옛 제보는 완료 전에 본인도 사진을 못 봄(본인 확인이 안 되므로)
+    old = make(37.9710, 127.7010)
+    assert client.get("/api/reports", params={"ids": old["public_id"], "client_key": A}).json()[0]["photo_url"] is None
+
+    finish(pid)                                                             # 조치 완료 → 누구에게나 공개 (지도의 조치 전·후 보기)
+    done = client.get("/api/reports", params={"ids": pid}).json()[0]
+    assert done["photo_url"] and done["photos"]
+    # 담당자 화면은 항상 사진이 보임
+    assert admin_item(pid)["photo_url"]
