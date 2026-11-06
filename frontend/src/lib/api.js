@@ -36,7 +36,7 @@ export const api = {
 
   // 주민 제보
   createReport: (body) => request('/api/reports', json('POST', body)),
-  myReports: (ids) => (ids.length ? request(`/api/reports?ids=${ids.join(',')}`) : Promise.resolve([])),
+  myReports: (ids, clientKey) => (ids.length ? request(`/api/reports?ids=${ids.join(',')}${clientKey ? `&client_key=${encodeURIComponent(clientKey)}` : ''}`) : Promise.resolve([])), // client_key가 같은 제보는 완료 전에도 내 사진이 나옴
   nearby: (lat, lon, category, accuracy) => request(`/api/reports/nearby?${new URLSearchParams({ lat, lon, ...(category ? { category } : {}), ...(accuracy ? { accuracy } : {}) })}`), // 같은 곳에 이미 있는 제보(진행 중, 조치 완료 후)
   cancelReport: (publicId, clientKey) => request(`/api/reports/${publicId}/cancel`, json('POST', { client_key: clientKey })), // 접수 상태 제보 취소(본인 브라우저만)
   feedback: (publicId, kind, clientKey) => request(`/api/reports/${publicId}/feedback`, json('POST', { kind, client_key: clientKey })), // 조치 완료 뒤 고쳐졌어요/아직 그대로예요

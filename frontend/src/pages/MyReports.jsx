@@ -21,7 +21,7 @@ export default function MyReports() {
 
   useEffect(() => {
     let alive = true
-    const load = () => api.myReports(myReports.ids())
+    const load = () => api.myReports(myReports.ids(), myReports.clientKey())
       .then((r) => {
         if (!alive) return
         setList(r)
