@@ -2,6 +2,7 @@
 // 브라우저 저장소는 막혀 있을 수 있어(사생활 보호 모드 등) 모든 읽기·쓰기를 try/catch 한다.
 const IDS = 'sbgap.myReportIds'
 const SEEN = 'sbgap.myReportsSeenAt' // 내 제보 화면을 마지막으로 본 시각 → 이후 소식이 있으면 빨간 점
+const NICK = 'sbgap.nickname' // 주민이 정한 별명(선택). 이 브라우저에만 저장하고 제보를 보낼 때 함께 보낸다
 const CLIENT = 'sbgap.clientKey' // 이 브라우저를 구분하는 무작위 값 (로그인이 없어 '한 브라우저당 한 표'를 서버에 알리는 데 씀)
 const VOTES = 'sbgap.feedbackVotes' // 조치 완료 제보에 내가 누른 '고쳐졌어요 / 아직 그대로예요'
 let memoryKey = null // 브라우저 저장소가 막혀 있어도 이번 방문 동안은 같은 값을 쓴다
@@ -40,6 +41,14 @@ export const myReports = {
       write(CLIENT, k)
     }
     return k
+  },
+  nickname: () => read(NICK, ''),
+  setNickname: (v) => write(NICK, String(v).trim().slice(0, 20)), // 브라우저에 저장돼 앱을 껐다 켜도 유지(브라우저 데이터를 지우면 사라짐)
+  clientCode: () => myReports.clientKey().slice(0, 8), // 본인과 담당자가 서로 맞춰 볼 수 있는 앞 8자리
+  resetClientKey: () => { // 새 식별번호로 바꾼다 (이후 제보부터 새 번호로 저장됨)
+    memoryKey = null
+    try { localStorage.removeItem(CLIENT) } catch { /* 무시 */ }
+    return myReports.clientKey().slice(0, 8)
   },
   vote: (publicId) => read(VOTES, {})[publicId] ?? null,
   setVote: (publicId, kind) => write(VOTES, { ...read(VOTES, {}), [publicId]: kind }),

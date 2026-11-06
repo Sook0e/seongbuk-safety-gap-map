@@ -63,7 +63,7 @@
 ## 주민 제보
 | 메서드 | 주소 | 설명 |
 | --- | --- | --- |
-| POST | `/api/reports` | 제보 보내기. 본문 `{photo_key, lat?, lon?, address?, memo?(200자), is_demo?, facility_type?, taken_at?, photo_memo?(200자), extra_photos?[{photo_key, memo?, taken_at?}](최대 3장)}`. `photo_key`는 대표 사진(AI 분류 대상), 추가 사진은 `POST /api/photos?classify=false`로 올린 key. 시설 종류로 담당 부서 1차 배정 (`docs/departments.md`) |
+| POST | `/api/reports` | 제보 보내기. 본문 `{photo_key, lat?, lon?, address?, memo?(200자), is_demo?, facility_type?, taken_at?, photo_memo?(200자), extra_photos?[{photo_key, memo?, taken_at?}](최대 3장)}`. `photo_key`는 대표 사진(AI 분류 대상), 추가 사진도 화면에서는 `POST /api/photos`(AI 분류 켬)로 올려 사진 메모 초안을 채우지만, 제보의 AI 분류·우선순위는 대표 사진만 쓴다. 시설 종류로 담당 부서 1차 배정 (`docs/departments.md`) |
 | POST | `/api/reports/{public_id}/confirm` | 나도 봤어요(+1). `confirm_count` +1 → 우선순위 1명당 +5(최대 +20). 응답에 `cross_checked`(3명 이상이면 true, `constants.CROSS_CHECK_MIN`). 로그인이 없어 중복 방지는 브라우저에서만 → 한 사람이 여러 브라우저로 누르면 늘 수 있음 |
 | POST | `/api/reports/{public_id}/feedback` | 조치 완료 뒤 주민 확인. 본문 `{kind: fixed｜not_fixed, client_key}`(8자 이상, 브라우저 무작위 값). 조치 완료 전에는 400. 한 브라우저당 한 표, 다시 보내면 바뀜. 응답은 ReportOut(`aftercare.fixed/not_fixed/recurrence`). 이전 제보 번호는 주민에게 내보내지 않음 |
 | GET | `/api/reports?ids=a,b,c` | 내 제보 목록 (최대 50개). `ids`는 브라우저에 저장한 `public_id` |
@@ -126,3 +126,5 @@
 - 관리자 제보 응답에 `season`(해빙기·우기·동절기, 접수 달 기준), `photo_age_days`, `stale_photo`(대표 사진 촬영일이 접수일보다 `STALE_PHOTO_DAYS`일 넘게 앞섬). `GET /api/admin/reports`와 `ledger.xlsx`에 `season` 필터. 점수에는 반영하지 않음.
 - `GET /api/admin/corrections.csv` 담당자가 고친 AI 분류(실제 유형, 오탐)를 CSV로 내려받는다(엑셀용 UTF-8). 열: 접수번호, 접수일시, AI 유형, AI 신뢰도, 담당자가 고른 실제 유형, AI 오탐, AI와 일치, 사진 키. 체험 제보·수정하지 않은 제보는 빠지고, 이름·식별값·위치·메모는 넣지 않는다. AI 분류 개선용 평가 세트·프롬프트 예시 후보.
 - `GET /api/admin/corrections/summary` AI 유형 → 담당자가 고른 유형 쌍별 건수(`total`, `pairs[{ai, true, count, match}]`).
+- `POST /api/reports` 본문에 `client_key?`(8~40자, 브라우저 무작위 값) 추가. 응답에는 나가지 않는다. 관리자 제보 응답에 `same_client_reports`(같은 브라우저 제보 수, 이 제보 포함), `same_client_24h`(그중 이 제보 전후 24시간 안). 식별값이 없으면 null.
+- 식별번호·별명: `POST /api/reports` 본문에 `client_nickname?`(20자) 추가. 관리자 제보 응답에 `client_code`(식별값 앞 8자리, 주민이 '내 제보' 화면에서 보는 번호와 같음), `client_nickname`. 식별값 전체는 어느 응답에도 나가지 않는다.

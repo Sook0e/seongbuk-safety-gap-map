@@ -3,6 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { api } from '../lib/api.js'
 import { addBaseLayer } from '../lib/map.js'
+import PhotoViewer from '../components/PhotoViewer.jsx'
 import { myReports } from '../lib/myReports.js'
 
 // 주민 3 지도. 필터: 전체 / 주민 제보 / 조치 완료. 소방용수 '점검 필요' 점은 주민이 신경 쓰는 정보가 아니라(멘토 지적) 이 화면에서 뺐고 관리자 목록에만 남김 (docs/decisions.md). 하단 시트에 선택 항목 요약.
@@ -65,6 +66,8 @@ export default function MapPage() {
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [confirmMsg, setConfirmMsg] = useState('')
+  const [shots, setShots] = useState({ before: null, after: null }) // 선택한 제보의 조치 전·후 사진 (눌렀을 때 불러옴)
+  const [viewer, setViewer] = useState(false)
   const [view, setView] = useState({ zoom: 14, bounds: null }) // 확대·이동할 때마다 갱신 → 묶음과 '이 지역 N건'을 다시 계산
 
   // 나도 봤어요(+1): 같은 곳 확인 인원 → 우선순위 점수에 반영. 브라우저당 한 번
@@ -142,6 +145,14 @@ export default function MapPage() {
     ? shown.filter((f) => view.bounds.contains([f.geometry.coordinates[1], f.geometry.coordinates[0]])).length : shown.length), [shown, view.bounds])
 
   const p = selected?.properties
+  // 마커를 누르면 그 제보의 사진 주소를 불러온다 (지도 응답에는 사진을 싣지 않아 가볍게 유지)
+  useEffect(() => {
+    setShots({ before: null, after: null }); setViewer(false)
+    if (!p?.public_id) return undefined
+    let alive = true
+    api.myReports([p.public_id]).then((list) => { if (alive && list[0]) setShots({ before: list[0].photo_url ?? null, after: list[0].after_photo_url ?? null }) }).catch(() => {})
+    return () => { alive = false }
+  }, [p?.public_id]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="relative h-full">
       <div ref={el} className="absolute inset-0" />
@@ -161,13 +172,29 @@ export default function MapPage() {
         <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border-2 border-red-600" style={{ background: COLORS.done }} />조치 후 재확인 필요</div>
         <div className="flex items-center gap-1"><span className="h-2 w-3 border border-red-600 bg-red-300" />어린이보호구역</div>
       </div>
+      {viewer && <PhotoViewer before={shots.before} after={shots.after} onClose={() => setViewer(false)} />}
       {p && (
         <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-2.5 rounded-t-[20px] border-t border-line bg-white px-5 pb-4 pt-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
           <div className="mx-auto h-1 w-10 rounded bg-line" />
           <button type="button" onClick={() => setSelected(null)} className="float-right text-sm text-sub">닫기</button>
-          <div className="text-[13px] text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
-          <div className="font-semibold">{p.category ?? '분류 없음'}</div>
-          <div className="text-[13px] text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
+          <div className="flex items-start gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+              <div className="text-[13px] text-gray-500">주민 제보 · {p.status_label}{p.facility_label && ` · ${p.facility_label}`}</div>
+              <div className="font-semibold">{p.category ?? '분류 없음'}</div>
+              <div className="text-[13px] text-gray-500">{new Date(p.created_at).toLocaleString('ko-KR')} · 같은 곳 확인 {p.confirm_count ?? 0}명{p.cross_checked && ' · 교차확인'}</div>
+            </div>
+            {(shots.before || shots.after) && (
+              <div className="flex shrink-0 gap-1.5">
+                {[[shots.before, shots.after ? '조치 전' : '제보 사진'], [shots.after, '조치 후']].filter(([src]) => src).map(([src, label]) => (
+                  <button key={label} type="button" onClick={() => setViewer(true)} aria-label={`${label} 사진 크게 보기`}
+                    className="relative h-16 w-16 overflow-hidden rounded-lg border border-line">
+                    <img src={src} alt={label} className="h-full w-full object-cover" />
+                    <span className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[11px] font-semibold text-white">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {p.recheck && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] leading-snug">조치 완료 뒤에도 '아직 그대로'라는 주민 의견이 더 많은 곳이에요. 담당자가 다시 확인합니다.</p>}
           {p.status !== 'done' && (
             <button type="button" disabled={myReports.confirmed(p.public_id) || myReports.ids().includes(p.public_id)}

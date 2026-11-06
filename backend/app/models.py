@@ -74,6 +74,7 @@ class Report(Base):
     feedback: Mapped[list[ReportFeedback]] = relationship(back_populates="report", cascade="all, delete-orphan")
     recurrence_link: Mapped[ReportLink | None] = relationship(
         foreign_keys="ReportLink.report_id", back_populates="report", uselist=False, cascade="all, delete-orphan")
+    client: Mapped[ReportClient | None] = relationship(back_populates="report", uselist=False, cascade="all, delete-orphan")
 
 
 class ReportPhoto(Base):
@@ -104,6 +105,20 @@ class ReportFeedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
     report: Mapped[Report] = relationship(back_populates="feedback")
+
+
+class ReportClient(Base):
+    """제보를 보낸 브라우저의 식별값. 로그인이 없어 브라우저가 만든 무작위 값(client_key)으로 '같은 브라우저에서 올라온 제보'를 담당자가
+    확인한다. 사람을 특정하지 않고, 브라우저 데이터를 지우거나 다른 브라우저·폰을 쓰면 다른 값이 된다. 식별값 자체는 어떤 응답에도 내보내지 않는다."""
+    __tablename__ = "report_clients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("reports.id"), unique=True, index=True)
+    client_key: Mapped[str] = mapped_column(String(40), index=True)
+    nickname: Mapped[str | None] = mapped_column(String(20))   # 주민이 정한 별명(선택). 실명·연락처를 쓰지 않도록 화면에서 안내
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    report: Mapped[Report] = relationship(back_populates="client")
 
 
 class ReportLink(Base):
