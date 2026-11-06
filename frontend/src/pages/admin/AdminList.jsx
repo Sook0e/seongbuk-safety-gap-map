@@ -92,7 +92,7 @@ export default function AdminList() {
                     ? <span className="rounded bg-teal-100 px-1.5 py-0.5 font-semibold text-teal-800">교차확인 {r.confirm_count}명</span>
                     : <span className="text-sub">{r.confirm_count ? `${r.confirm_count}명` : '-'}</span>}
                 </td>
-                <td data-label="상태" className="whitespace-nowrap px-3.5"><span className={`rounded-full px-2 py-0.5 text-xs ${statusChip(r)}`}>{r.priority.overdue ? '기한 초과' : r.status_label}</span></td>
+                <td data-label="상태" className="whitespace-nowrap px-3.5"><span className={`rounded-full px-2 py-0.5 text-xs ${statusChip(r)}`}>{r.priority.overdue ? '기한 초과' : r.status_label}</span>{r.aftercare?.recurrence && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">재발</span>}{r.aftercare?.recheck_due && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">재점검</span>}</td>
                 <td data-label="기한" className={`whitespace-nowrap px-3.5 ${r.priority.overdue ? 'font-semibold text-red-700' : 'text-sub'}`}>
                   {r.priority.due_at ? new Date(r.priority.due_at).toLocaleDateString('ko-KR') : '-'}
                 </td>

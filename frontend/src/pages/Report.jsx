@@ -93,7 +93,7 @@ export default function Report() {
     setBusy(true); setError('')
     try {
       const r = await api.createReport({
-        photo_key: photo.key, lat: pos?.lat ?? null, lon: pos?.lon ?? null,
+        photo_key: photo.key, lat: pos?.lat ?? null, lon: pos?.lon ?? null, accuracy_m: pos?.accuracy ?? null,
         memo: memo || null, is_demo: isDemo, facility_type: facility,
         taken_at: mainTaken, photo_memo: photoMemo || null,
         extra_photos: extras.map((x) => ({ photo_key: x.key, memo: x.memo || null, taken_at: x.takenAt })),
@@ -164,7 +164,7 @@ export default function Report() {
 
       {photo && <PhotoStrip items={stripItems} active={active} onActive={setActive} onMemo={setItemMemo} onRemove={removeItem} onAdd={addPhotos} adding={adding} />}
       {photo && <AIResultCard ai={photo.ai} highlight />}
-      {photo && <NearbyReports pos={pos} category={photo.ai && !photo.ai.mock ? photo.ai.category : null} />}
+      {photo && <NearbyReports pos={pos} accuracy={pos?.accuracy} category={photo.ai && !photo.ai.mock ? photo.ai.category : null} />}
 
       <div>
         <p className="mb-1.5 text-sm text-sub">어떤 시설인가요? (담당 부서를 정하는 데 씁니다)</p>

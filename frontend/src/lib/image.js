@@ -14,7 +14,7 @@ export function currentPosition(timeout = 8000) {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null)
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }), // accuracy(m): 같은 곳 판정 반경을 정하는 데 씀
       () => resolve(null),
       { enableHighAccuracy: true, timeout },
     )

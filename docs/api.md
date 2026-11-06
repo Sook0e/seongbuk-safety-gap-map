@@ -65,8 +65,9 @@
 | --- | --- | --- |
 | POST | `/api/reports` | 제보 보내기. 본문 `{photo_key, lat?, lon?, address?, memo?(200자), is_demo?, facility_type?, taken_at?, photo_memo?(200자), extra_photos?[{photo_key, memo?, taken_at?}](최대 3장)}`. `photo_key`는 대표 사진(AI 분류 대상), 추가 사진은 `POST /api/photos?classify=false`로 올린 key. 시설 종류로 담당 부서 1차 배정 (`docs/departments.md`) |
 | POST | `/api/reports/{public_id}/confirm` | 나도 봤어요(+1). `confirm_count` +1 → 우선순위 1명당 +5(최대 +20). 응답에 `cross_checked`(3명 이상이면 true, `constants.CROSS_CHECK_MIN`). 로그인이 없어 중복 방지는 브라우저에서만 → 한 사람이 여러 브라우저로 누르면 늘 수 있음 |
+| POST | `/api/reports/{public_id}/feedback` | 조치 완료 뒤 주민 확인. 본문 `{kind: fixed｜not_fixed, client_key}`(8자 이상, 브라우저 무작위 값). 조치 완료 전에는 400. 한 브라우저당 한 표, 다시 보내면 바뀜. 응답은 ReportOut(`aftercare.fixed/not_fixed/recurrence`). 이전 제보 번호는 주민에게 내보내지 않음 |
 | GET | `/api/reports?ids=a,b,c` | 내 제보 목록 (최대 50개). `ids`는 브라우저에 저장한 `public_id` |
-| GET | `/api/reports/nearby?lat&lon&category?&radius_m=50` | 같은 곳(기본 50m, 최대 200m)에 이미 접수된 주민 제보 요약. 제보 화면에서 중복 제보를 줄이려고 씀. 체험·오탐·공백 항목 제외, `category`를 주면 AI 분류가 같은 것만, 가까운 순 최대 5건. `{public_id, category, status, status_label, created_at, distance_m, confirm_count, dept, facility_label}` (사진·메모 없음) |
+| GET | `/api/reports/nearby?lat&lon&category?&accuracy?&radius_m?` | 같은 곳(기본 50m, 최대 200m)에 이미 접수된 주민 제보 요약. 제보 화면에서 중복 제보를 줄이려고 씀. 체험·오탐·공백 항목 제외, `category`를 주면 AI 분류가 같은 것만, 가까운 순 최대 5건. `{public_id, category, status, status_label, created_at, distance_m, confirm_count, dept, facility_label}` (사진·메모 없음) |
 | GET | `/api/reports/{public_id}` | 제보 1건 |
 
 `ReportOut.photos` = 붙은 사진 전체(대표 포함, 최대 4장) `[{position, photo_url, memo, taken_at}]`. 사진 표가 생기기 전의 제보는 대표 사진 한 장(`taken_at` 없음)으로 나온다. 촬영 일시는 사진 속 위치 정보(EXIF GPS)와 달리 남긴다. 점검 대장 엑셀에 `촬영 일시`, `사진 수` 열이 추가됨.
@@ -114,3 +115,11 @@
 
 ## 아직 없는 API (docs/handoff.md 참고)
 - 학습 모델 분류 (`vision.py`에 provider `model` 추가 예정)
+
+### 조치 후 관리 (사후 관리)
+- `GET /api/reports/nearby`: 각 항목에 `state`(open｜recent_done｜old_done), `done_days_ago`, `fixed`, `not_fixed` 추가. `accuracy`(폰 위치 정확도 m)를 주면 반경 = 정확도의 1.5배(30~200m).
+- `GET /api/reports/map`: 속성 `recheck`(조치 완료인데 '아직 그대로'가 더 많음).
+- `POST /api/reports` 본문에 `accuracy_m` 추가. 같은 곳(반경 안) 180일 이내에 완료된 제보가 있으면 재발로 연결.
+- `GET /api/admin/summary`: `aftercare{reopened, recurred, recheck_due}`.
+- `GET /api/admin/reports/{id}/place-history`: 같은 곳 이력(`relation`: self｜prior｜later｜nearby, 조치 전후 사진, 주민 확인 수).
+- 관리자 제보 응답 `aftercare`에 `recurrence{days_after_done, admin_id}`, `recheck_due`, `recheck_at`. 엑셀 대장에 '재발', '주민 재확인' 열.

@@ -37,13 +37,15 @@ export const api = {
   // 주민 제보
   createReport: (body) => request('/api/reports', json('POST', body)),
   myReports: (ids) => (ids.length ? request(`/api/reports?ids=${ids.join(',')}`) : Promise.resolve([])),
-  nearby: (lat, lon, category) => request(`/api/reports/nearby?${new URLSearchParams({ lat, lon, ...(category ? { category } : {}) })}`), // 같은 곳에 이미 접수된 제보
+  nearby: (lat, lon, category, accuracy) => request(`/api/reports/nearby?${new URLSearchParams({ lat, lon, ...(category ? { category } : {}), ...(accuracy ? { accuracy } : {}) })}`), // 같은 곳에 이미 있는 제보(진행 중, 조치 완료 후)
+  feedback: (publicId, kind, clientKey) => request(`/api/reports/${publicId}/feedback`, json('POST', { kind, client_key: clientKey })), // 조치 완료 뒤 고쳐졌어요/아직 그대로예요
   report: (publicId) => request(`/api/reports/${publicId}`),
   confirm: (publicId) => request(`/api/reports/${publicId}/confirm`, { method: 'POST' }), // 나도 봤어요 +1
   stats: () => request('/api/stats'), // 첫 화면 '이번 주 제보·조치 완료'
 
   // 관리자
   adminReports: (params = {}) => request(`/api/admin/reports?${new URLSearchParams(params)}`),
+  adminPlaceHistory: (id) => request(`/api/admin/reports/${id}/place-history`), // 같은 곳 이력(조치 전후 사진, 재발)
   adminReport: (id) => request(`/api/admin/reports/${id}`),
   adminUpdate: (id, body) => request(`/api/admin/reports/${id}`, json('PATCH', body)),
   ledgerUrl: (params = {}) => `/api/admin/ledger.xlsx?${new URLSearchParams(params)}`, // 점검 대장 엑셀 (a 태그 href로 바로 내려받기)

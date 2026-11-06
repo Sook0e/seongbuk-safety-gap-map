@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import AIResultCard from '../../components/AIResultCard.jsx'
+import AftercarePanel from '../../components/AftercarePanel.jsx'
 import PriorityCard from '../../components/PriorityCard.jsx'
 import { api } from '../../lib/api.js'
 import { resizeImage } from '../../lib/image.js'
@@ -95,6 +96,7 @@ export default function AdminDetail() {
           {msg && <p className="text-xs text-gray-500">{msg}</p>}
         </div>
       </div>
+      <AftercarePanel report={r} />
       <div className="rounded-lg bg-white p-4">
         <h2 className="mb-2 font-semibold">처리 이력</h2>
         <ol className="flex flex-col gap-1 text-sm">

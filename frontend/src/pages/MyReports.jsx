@@ -1,11 +1,12 @@
 import Brand from '../components/Brand.jsx'
 import { useEffect, useRef, useState } from 'react'
+import BeforeAfter from '../components/BeforeAfter.jsx'
 import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
 import { formatTaken } from '../lib/exif.js'
 import { myReports } from '../lib/myReports.js'
 
-// 주민 4 내 제보: 상태 진행, 제보 사진과 조치 후 사진, 담당 부서 메모.
+// 주민 4 내 제보: 상태 진행, 조치 전·후 비교, 조치 결과 확인(고쳐졌어요/아직 그대로예요), 재발 안내, 처리 이력, 담당 부서 메모.
 // 이 화면을 열면 '확인한 시각'을 저장해 하단바 빨간 점이 꺼진다.
 // 화면을 열어 둔 채로 담당자가 처리해도 바뀌도록 15초마다, 그리고 다른 앱에서 돌아올 때 다시 불러온다
 // (하단바 빨간 점 확인 주기와 같은 15초. 푸시 알림은 만들지 않음).
@@ -14,6 +15,7 @@ const REFRESH_MS = 15000
 export default function MyReports() {
   const [list, setList] = useState(null)
   const [error, setError] = useState('')
+  const [voteMsg, setVoteMsg] = useState({})
   const loaded = useRef(false)
 
   useEffect(() => {
@@ -36,6 +38,17 @@ export default function MyReports() {
     return () => { alive = false; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
+  async function vote(r, kind) {
+    try {
+      const out = await api.feedback(r.public_id, kind, myReports.clientKey())
+      myReports.setVote(r.public_id, kind)
+      setList((l) => l.map((x) => (x.public_id === r.public_id ? out : x)))
+      setVoteMsg((m) => ({ ...m, [r.public_id]: kind === 'not_fixed'
+        ? "알려 주셔서 고맙습니다. '아직 그대로'라는 의견이 모이면 담당자가 다시 확인합니다."
+        : '알려 주셔서 고맙습니다. 고쳐진 것으로 기록했어요.' }))
+    } catch (e) { setVoteMsg((m) => ({ ...m, [r.public_id]: `실패: ${e.message}` })) }
+  }
+
   if (error) return <p className="p-5 text-danger">불러오기 실패: {error}</p>
   if (!list) return <p className="p-5">불러오는 중…</p>
   if (!list.length) return <section className="min-h-full bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p></section>
@@ -51,36 +64,73 @@ export default function MyReports() {
     const n = days(r.created_at)
     return n === 0 ? '오늘 접수' : `접수 후 ${n}일째`
   }
+  // 처리 이력: 상태가 바뀐 날짜와 시스템이 남긴 재발 기록만 보여 준다 (담당자가 적은 내부 메모는 보이지 않음)
+  const timeline = (r) => r.history
+    .filter((h) => h.from_status !== h.to_status || (h.note ?? '').includes('재발'))
+    .map((h) => ({ at: h.at, text: h.from_status === h.to_status ? h.note : h.to_status_label }))
   const chip = (st, notTarget) => (notTarget ? 'bg-gray-200 text-sub' : st === 'done' ? 'bg-[#EBEFCB] text-brand' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
   return (
     <section className="flex min-h-full flex-col gap-3.5 bg-page px-5 pb-6 pt-6 text-ink">
       <header className="resident-header"><Brand /><h1>내 제보</h1></header>
       <p className="text-sm text-sub">이 브라우저에서 보낸 제보 <strong className="text-brand">{list.length}건</strong></p>
-      {list.map((r) => (
-        <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-brand' : 'border border-line'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-base font-semibold">{r.ai?.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
-              <span className="text-[13px] text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')} · 접수번호 {r.public_id}</span>
+      {list.map((r) => {
+        const ac = r.aftercare ?? { fixed: 0, not_fixed: 0, recurrence: null }
+        const mine = myReports.vote(r.public_id)
+        const photos = (r.photos?.length ? r.photos : [{ photo_url: r.photo_url }]).filter((p) => p.photo_url)
+        const compare = r.status === 'done' && r.photo_url && r.after_photo_url
+        return (
+          <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-brand' : 'border border-line'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-base font-semibold">{r.ai?.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
+                <span className="text-[13px] text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')} · 접수번호 {r.public_id}</span>
+              </div>
+              <span className={`rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${chip(r.status, r.not_target)}`}>{r.not_target ? '처리 대상 아님' : (r.status_label ?? r.status)}</span>
             </div>
-            <span className={`rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${chip(r.status, r.not_target)}`}>{r.not_target ? '처리 대상 아님' : (r.status_label ?? r.status)}</span>
-          </div>
-          {r.not_target
-            ? <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">담당자가 확인한 결과, 처리 대상이 아니라고 판단했습니다.{r.dept_note ? ` 이유: ${r.dept_note}` : ' 이유는 담당 부서에 문의해 주세요.'}</p>
-            : <><StatusSteps status={r.status} /><p className="text-sm font-medium text-brand">{progress(r)}</p></>}
-          <div className="grid grid-cols-2 gap-2">
-            {(r.photos?.length ? r.photos : [{ photo_url: r.photo_url }]).filter((p) => p.photo_url).map((p, i) => (
-              <figure key={p.photo_url} className="flex flex-col gap-1">
-                <img src={p.photo_url} alt={i === 0 ? '제보 사진' : `제보 사진 ${i + 1}`} className="h-24 w-full rounded-lg object-cover" />
-                <figcaption className="text-[13px] leading-snug text-sub">{i === 0 ? '제보 사진' : `사진 ${i + 1}`}{p.taken_at && ` · 촬영 ${formatTaken(p.taken_at)}`}{p.memo && <span className="block text-ink">{p.memo}</span>}</figcaption>
-              </figure>
-            ))}
-            {r.after_photo_url && <figure className="flex flex-col gap-1"><img src={r.after_photo_url} alt="조치 후 사진" className="h-24 w-full rounded-lg object-cover" /><figcaption className="text-[13px] text-sub">조치 후 사진</figcaption></figure>}
-          </div>
-          {r.dept && <p className="text-[13px] text-sub">담당: {r.dept}</p>}
-          {!r.not_target && r.dept_note && <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">{r.dept_note}</p>}
-        </article>
-      ))}
+            {r.not_target
+              ? <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">담당자가 확인한 결과, 처리 대상이 아니라고 판단했습니다.{r.dept_note ? ` 이유: ${r.dept_note}` : ' 이유는 담당 부서에 문의해 주세요.'}</p>
+              : <><StatusSteps status={r.status} /><p className="text-sm font-medium text-brand">{progress(r)}</p></>}
+            {ac.recurrence && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-sm leading-normal">같은 곳에서 조치된 지 {ac.recurrence.days_after_done}일 만에 다시 제보된 곳이에요. 재발로 담당자에게 전달됩니다.</p>
+            )}
+            {compare && <BeforeAfter before={r.photo_url} after={r.after_photo_url} />}
+            <div className="grid grid-cols-2 gap-2">
+              {photos.filter((_, i) => !(compare && i === 0)).map((p, i) => (
+                <figure key={p.photo_url} className="flex flex-col gap-1">
+                  <img src={p.photo_url} alt={`제보 사진 ${i + 1}`} className="h-24 w-full rounded-lg object-cover" />
+                  <figcaption className="text-[13px] leading-snug text-sub">{p.taken_at ? `촬영 ${formatTaken(p.taken_at)}` : '제보 사진'}{p.memo && <span className="block text-ink">{p.memo}</span>}</figcaption>
+                </figure>
+              ))}
+              {!compare && r.after_photo_url && <figure className="flex flex-col gap-1"><img src={r.after_photo_url} alt="조치 후 사진" className="h-24 w-full rounded-lg object-cover" /><figcaption className="text-[13px] text-sub">조치 후 사진</figcaption></figure>}
+            </div>
+            {r.status === 'done' && !r.not_target && (
+              <div className="flex flex-col gap-2 rounded-lg bg-page p-3">
+                <p className="text-sm font-semibold">조치 결과가 맞나요?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[['fixed', '고쳐졌어요'], ['not_fixed', '아직 그대로예요']].map(([k, label]) => (
+                    <button key={k} type="button" onClick={() => vote(r, k)} aria-pressed={mine === k}
+                      className={`h-11 rounded-lg border text-sm font-semibold ${mine === k ? 'border-brand bg-brand text-white' : 'border-brand bg-white text-brand'}`}>{label}</button>
+                  ))}
+                </div>
+                <p className="text-[13px] text-sub">주민 확인: 고쳐졌어요 {ac.fixed}명 · 아직 그대로 {ac.not_fixed}명</p>
+                {voteMsg[r.public_id] && <p className="text-[13px] text-ink">{voteMsg[r.public_id]}</p>}
+              </div>
+            )}
+            {r.dept && <p className="text-[13px] text-sub">담당: {r.dept}</p>}
+            {!r.not_target && r.dept_note && <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">{r.dept_note}</p>}
+            {timeline(r).length > 0 && (
+              <details className="text-sm">
+                <summary className="cursor-pointer py-1 font-medium text-brand">처리 이력 보기</summary>
+                <ol className="mt-1.5 flex flex-col gap-1 border-l-2 border-line pl-3">
+                  {timeline(r).map((t, i) => (
+                    <li key={i} className="text-[13px] leading-snug"><span className="text-sub">{new Date(t.at).toLocaleDateString('ko-KR')}</span> · {t.text}</li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </article>
+        )
+      })}
     </section>
   )
 }
