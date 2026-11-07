@@ -58,7 +58,8 @@ export default function AdminMap() {
             {zoom < MAX_CLUSTER_ZOOM ? '축소 · 대상 묶음' : '확대 · 개별 위치'}
           </span>
         </div>
-        <div className="admin-panel mt-3 flex flex-wrap gap-3 text-xs" aria-label="지도 범례">
+        <div className="admin-panel admin-map-legend grid gap-2 text-xs" aria-label="지도 범례">
+          <strong>지도 범례</strong>
           {STATES.map(([label, color]) => <span key={label} className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full" style={{ background: color }} />{label}
           </span>)}
@@ -72,7 +73,7 @@ export default function AdminMap() {
             <p className="mt-2 text-sm text-sub">#{selected.id} · {selected.address || '주소 없음'} · {selected.source_label}</p>
             <p className="mt-2 text-sm font-semibold">{selected.status_label}</p>
           </article>
-          <PriorityCard priority={selected.priority} />
+          <article className="admin-panel"><h2 className="mb-3 font-bold">규칙이 매긴 점수</h2><PriorityCard priority={selected.priority} /></article>
           <Link className="admin-action" to={`/admin/reports/${selected.id}`}>점수 근거 · 상세 보기 →</Link>
         </> : <p className="admin-panel text-sm text-sub" role="status">{message}</p>}
       </div>

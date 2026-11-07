@@ -42,7 +42,7 @@ export default function AdminDetail() {
   return (
     <section className="admin-page">
       <div className="admin-page-heading"><h1>점검 대상 상세</h1><p>#{r.id} · {r.gap_rule ?? r.ai?.category ?? r.source_label} · {r.status_label}</p></div>
-      <div className="detail-grid grid grid-cols-3 gap-4">
+      <div className="admin-detail-grid">
         <div className="rounded-lg bg-white p-4">
           <h2 className="mb-2 font-semibold">{r.gap_rule ?? "AI 판별 결과"}</h2>
           {r.photo_url && <img src={r.photo_url} alt="제보 사진" className="mb-2 rounded" />}
@@ -72,12 +72,17 @@ export default function AdminDetail() {
               <span className="block text-xs text-gray-400">로그인이 없어 브라우저 기준입니다</span></p>
           )}
         </div>
-        <div className="rounded-lg bg-white p-4">
-          <h2 className="mb-2 font-semibold">규칙이 매긴 점수</h2>
+        <div className="admin-panel admin-detail-score">
+          <h2 className="mb-3 font-bold">규칙이 매긴 점수</h2>
           <PriorityCard priority={r.priority} />
         </div>
-        <div className="flex flex-col gap-2 rounded-lg bg-white p-4">
-          <h2 className="font-semibold">사람의 결정</h2>
+        <div className="admin-panel flex flex-col gap-2">
+          <h2 className="font-bold">위치 및 담당 정보</h2>
+          <dl className="mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+            <dt className="text-sub">주소</dt><dd>{r.address || '주소 없음'}</dd>
+            <dt className="text-sub">출처</dt><dd>{r.source_label}</dd>
+            <dt className="text-sub">처리 상태</dt><dd>{r.status_label}</dd>
+          </dl>
           <label className="text-xs text-gray-500">담당 부서 (규칙이 1차 배정{r.facility_label && ` · 시설: ${r.facility_label}`})</label>
           <select value={r.dept ?? ''} onChange={(e) => save({ dept: e.target.value })} className="rounded border p-1 text-sm">
             {r.dept && !depts.includes(r.dept) && <option value={r.dept}>{r.dept}</option>}
