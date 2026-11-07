@@ -1,6 +1,7 @@
 import ResidentHeader from '../components/ResidentHeader.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { toPolite } from '../lib/politeKo.js'
 import AIResultCard from '../components/AIResultCard.jsx'
 import NearbyReports from '../components/NearbyReports.jsx'
 import PhotoGuide from '../components/PhotoGuide.jsx'
@@ -25,7 +26,7 @@ const EXAMPLES = [
 ]
 const MAX_PHOTOS = 4
 const photoSrc = (key) => `/api/photos/${key}` // 서버에 올라간 사진 (로컬은 바로, supabase는 서명 주소로 넘겨 줌)
-const aiDraft = (ai) => (ai && !ai.mock && ai.category ? `${ai.category} 사진입니다. ${ai.reason ?? ''}`.trim().slice(0, 200) : '')
+const aiDraft = (ai) => (ai && !ai.mock && ai.category ? `${ai.category} 사진입니다. ${toPolite(ai.reason ?? '')}`.trim().slice(0, 200) : '')
 
 export default function Report() {
   const [params] = useSearchParams()

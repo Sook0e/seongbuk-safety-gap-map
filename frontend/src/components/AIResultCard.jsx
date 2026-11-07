@@ -1,3 +1,4 @@
+import { toPolite } from '../lib/politeKo.js'
 // AI 판별 결과 (주민 제보 3단계, 관리자 상세 'AI가 본 것'에서 같이 씀)
 // 신뢰도는 모델이 스스로 적은 값이라 '정확도'라고 쓰지 않는다 (CLAUDE.md). highlight: 주민 제보 화면에서 파란 테두리로 강조
 export default function AIResultCard({ ai, highlight = false }) {
@@ -19,7 +20,7 @@ export default function AIResultCard({ ai, highlight = false }) {
       {ai.alternatives?.length > 0 && (
         <p className="text-sm text-sub">다른 후보: {ai.alternatives.map((a) => `${a.category} ${a.confidence}%`).join(' · ')}</p>
       )}
-      {ai.reason && <p className="text-sm">{ai.reason}</p>}
+      {ai.reason && <p className="text-sm">{toPolite(ai.reason)}</p>}
       <p className="rounded-lg bg-page px-2.5 py-2 text-sm">담당자가 사진을 보고 최종 판단합니다</p>
       {ai.mock
         ? <p className="text-[13px] text-amber-700">임시 결과(Mock): AI 키가 없거나 호출에 실패함</p>
