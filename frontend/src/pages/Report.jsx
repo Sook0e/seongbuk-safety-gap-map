@@ -142,7 +142,7 @@ export default function Report() {
           {EXAMPLES.map(([title, desc]) => (
             <div key={title} className="rounded-xl border border-line bg-white px-3 py-2.5">
               <div className="text-sm font-semibold">{title}</div>
-              <div className="mt-0.5 text-[13px] leading-snug text-sub">{desc}</div>
+              <div className="mt-0.5 break-keep text-balance text-[13px] leading-snug text-sub">{desc}</div>
             </div>
           ))}
         </div>
