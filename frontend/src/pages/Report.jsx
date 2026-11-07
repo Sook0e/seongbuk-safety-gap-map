@@ -180,8 +180,11 @@ export default function Report() {
         {photo.ai && <div className="resident-ai"><AIResultCard ai={photo.ai} highlight /></div>}
         <div className="resident-card grid gap-2">
           <label className="grid gap-2 text-sm font-bold">자세한 설명
-            <textarea className="min-h-16 rounded-2xl bg-page p-3 text-sm font-normal" maxLength={200}
-              value={photo.memo} disabled={locked} onChange={(e) => setMemo(index, e.target.value)} />
+            <span className="resident-report-memo rounded-2xl bg-page text-sm font-normal">
+              <span aria-hidden="true">{photo.memo ?? ''}{' '}</span>
+              <textarea rows={1} maxLength={200} value={photo.memo ?? ''} disabled={locked}
+                onChange={(e) => setMemo(index, e.target.value)} />
+            </span>
           </label>
           <p className="text-xs text-sub">{aiDrafted ? 'AI 초안을 확인하고 실제 상황에 맞게 고쳐 주세요.' : '실제 상황을 자세히 적어 주세요.'}</p>
         </div>

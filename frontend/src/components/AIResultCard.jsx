@@ -13,7 +13,7 @@ export default function AIResultCard({ ai, highlight = false }) {
       <div className="text-[22px] font-bold">{ai.category}</div>
       {conf !== null && (
         <div className="flex items-center gap-2.5">
-          <div className="h-2 flex-1 overflow-hidden rounded bg-gray-200"><div className="h-2 bg-accent" style={{ width: `${conf}%` }} /></div>
+          <div className="h-2 flex-1 overflow-hidden rounded bg-gray-200"><div className={`h-2 ${highlight ? 'bg-brand' : 'bg-accent'}`} style={{ width: `${conf}%` }} /></div>
           <div className="text-sm font-semibold">신뢰도 {conf}%</div>
         </div>
       )}
