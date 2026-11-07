@@ -88,6 +88,7 @@ export default function MyReports() {
         const mine = myReports.vote(r.public_id)
         const photos = (r.photos?.length ? r.photos : [{ photo_url: r.photo_url }]).filter((p) => p.photo_url)
         const compare = r.photo_url && r.after_photo_url // 조치 후 사진이 올라오면 완료 처리 전이라도 바로 전·후를 비교해 볼 수 있게
+        const figCount = photos.filter((_, k) => !(compare && k === 0)).length + (!compare && r.after_photo_url ? 1 : 0) // 사진 한 장이면 칸을 한 줄로 써서 설명이 좁은 폭에 갇히지 않게
         return (
           <article key={r.public_id} className={`flex flex-col gap-3.5 rounded-2xl bg-white p-4 ${r.status === 'done' ? 'border-2 border-brand' : 'border border-line'}`}>
             <div className="flex items-center justify-between">
@@ -104,7 +105,7 @@ export default function MyReports() {
               <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-sm leading-normal">같은 곳에서 조치된 지 {ac.recurrence.days_after_done}일 만에 다시 제보된 곳이에요. 재발로 담당자에게 전달됩니다.</p>
             )}
             {compare && <BeforeAfter before={r.photo_url} after={r.after_photo_url} />}
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid gap-2 ${figCount > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {photos.filter((_, i) => !(compare && i === 0)).map((p, i) => (
                 <figure key={p.photo_url} className="flex flex-col gap-1">
                   <img src={p.photo_url} alt={`제보 사진 ${i + 1}`} className="h-24 w-full rounded-lg object-cover" />
