@@ -189,7 +189,7 @@ export default function Report() {
       </div>
 
       {photos.length > 0 && <PhotoStrip items={photos} onMemo={setMemo} onRemove={removePhoto} onMakeMain={makeMain} onAdd={addFiles} adding={uploading} max={MAX_PHOTOS} aiDrafted={aiDrafted} />}
-      {main?.ai && <AIResultCard ai={main.ai} highlight />}
+      {main?.ai && <AIResultCard ai={main.ai} highlight title={photos.length > 1 ? '대표 사진 AI 판별 결과' : undefined} />}
       {main && <NearbyReports pos={pos} accuracy={pos?.accuracy} category={main.ai && !main.ai.mock ? main.ai.category : null} />}
 
       <div>
@@ -204,7 +204,7 @@ export default function Report() {
         </div>
       </div>
 
-      <p className="text-[13px] text-sub">제보와 함께 이 브라우저의 식별번호 {myReports.clientCode()}{myReports.nickname() && ` · 별명 ${myReports.nickname()}`}가 저장돼요. 이름·연락처가 아니고, 내 제보 화면에서 확인할 수 있어요.</p>
+      <p className="break-keep text-[13px] leading-snug text-sub">제보와 함께 이 브라우저의 식별번호 <span className="whitespace-nowrap font-semibold text-ink">{myReports.clientCode()}</span>{myReports.nickname() ? <>와 별명 <span className="whitespace-nowrap font-semibold text-ink">{myReports.nickname()}</span>이</> : '가'} 저장돼요. 이름·연락처가 아니고, 내 제보 화면에서 확인할 수 있어요.</p>
       {error && <p className="text-sm text-danger">{error}</p>}
       <button type="button" disabled={!main || busy || uploading} onClick={submit}
         className="h-[52px] rounded-2xl bg-brand text-base font-semibold text-white disabled:opacity-40">제보 보내기</button>
