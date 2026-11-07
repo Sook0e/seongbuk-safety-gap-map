@@ -1,3 +1,4 @@
+import AdminMetrics from './AdminMetrics.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api.js'
@@ -11,6 +12,7 @@ const CATEGORIES = ['', '콘크리트 균열', '박리', '백태/누수', '철�
 
 export default function AdminList() {
   const [params, setParams] = useSearchParams()
+  const [screening, setScreening] = useState(null)
   const [rows, setRows] = useState([])
   const [search, setSearch] = useState(params.get('search') ?? '')
   const [page, setPage] = useState(0)
@@ -31,6 +33,10 @@ export default function AdminList() {
       .catch((e) => { if (active) setMsg(e.message) })
     return () => { active = false }
   }, [params]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    api.adminSummary().then((summary) => setScreening(summary.screening)).catch(() => {})
+  }, [])
 
   const set = (k, v) => { const p = new URLSearchParams(params); v ? p.set(k, v) : p.delete(k); setParams(p) }
 
@@ -68,6 +74,10 @@ export default function AdminList() {
         </label>
         </div>
       </div>
+      {screening && <div className="hidden md:block"><AdminMetrics items={[
+        ['사전 점검 대상', `${screening.targets}곳`, '공공데이터 기반 현장 확인 대상'],
+        ...Object.entries(screening.by_rule).slice(0, 3).map(([rule, count]) => [rule, `${count}곳`, '현장 확인 필요']),
+      ]} /></div>}
       <form className="admin-panel flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); set('search', search.trim()) }}>
         <input type="search" aria-label="점검 대상 검색" placeholder="번호 또는 점검 내용 검색" value={search} onChange={(e) => setSearch(e.target.value)} />
 
@@ -90,7 +100,7 @@ export default function AdminList() {
         <table className="admin-list-table w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-[13px] font-medium text-sub">
-              {['우선순위', '번호', '접수', '출처', '유형·규칙', 'AI 신뢰도', '담당', '주민 확인', '상태', '기한', '오탐'].map((h) => <th key={h} className="whitespace-nowrap px-3.5 py-3 font-medium">{h}</th>)}
+              {['우선순위', '번호', '접수', '출처', '유형·규칙', 'AI 신뢰도', '담당', '주민 확인', '상태', '기한', '상세', '오탐'].map((h) => <th key={h} className="whitespace-nowrap px-3.5 py-3 font-medium">{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -118,6 +128,7 @@ export default function AdminList() {
                 <td data-label="기한" className={`whitespace-nowrap px-3.5 ${r.priority.overdue ? 'font-semibold text-red-700' : 'text-sub'}`}>
                   {r.priority.due_at ? new Date(r.priority.due_at).toLocaleDateString('ko-KR') : '-'}
                 </td>
+                <td data-label="상세"><Link to={`/admin/reports/${r.id}`} className="admin-secondary">상세 보기 →</Link></td>
                 <td data-label="오탐" className="whitespace-nowrap px-3.5">{r.false_positive ? '오탐' : ''}</td>
               </tr>
             ))}

@@ -98,13 +98,15 @@ export default function AdminIntegrated() {
       </div>
       <div className="integrated-grid grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4">
         <div className="h-[480px] overflow-y-auto rounded-lg bg-white">
+          <h2 className="px-4 py-3 font-bold">후보 주소 <span className="text-sm text-sub">{shown.length}곳</span></h2>
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-white text-left text-gray-500"><tr><th className="p-2">주소</th><th>함께 있는 시설</th></tr></thead>
+            <thead className="sticky top-0 bg-white text-left text-gray-500"><tr><th className="p-2">주소</th><th>함께 있는 시설</th><th>시설 수</th></tr></thead>
             <tbody>
               {shown.map((f) => (
-                <tr key={f.properties.address} className="border-t">
+                <tr key={f.properties.address} className={`border-t border-line ${selected === f ? 'bg-[#f2f5df]' : ''}`}>
                   <td className="p-2"><button type="button" className="text-left font-semibold underline" onClick={() => setSelected(f)}>{f.properties.address}</button></td>
-                  <td>{f.properties.kinds.join(' · ')}</td>
+                  <td><div className="flex flex-wrap gap-1">{f.properties.kinds.map((kind) => <span key={kind} className="rounded bg-page px-2 py-1 text-xs">{kind}</span>)}</div></td>
+                  <td className="whitespace-nowrap">{f.properties.kinds.length}종</td>
                 </tr>
               ))}
             </tbody>
