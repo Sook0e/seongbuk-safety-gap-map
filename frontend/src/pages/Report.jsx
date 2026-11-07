@@ -1,3 +1,4 @@
+import { toPolite } from '../lib/politeKo.js'
 import Brand from '../components/Brand.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -27,7 +28,7 @@ const EXAMPLES = [
 ]
 const MAX_PHOTOS = 4
 const photoSrc = (key) => `/api/photos/${key}` // 서버에 올라간 사진 (로컬은 바로, supabase는 서명 주소로 넘겨 줌)
-const aiDraft = (ai) => (ai && !ai.mock && ai.category ? `${ai.category} 사진입니다. ${ai.reason ?? ''}`.trim().slice(0, 200) : '')
+const aiDraft = (ai) => (ai && !ai.mock && ai.category ? `${ai.category} 사진입니다. ${toPolite(ai.reason ?? '')}`.trim().slice(0, 200) : '')
 
 export default function Report() {
   const [params] = useSearchParams()
@@ -133,7 +134,7 @@ export default function Report() {
         </Link><Brand /></div><h1>제보하기{isDemo && <span className="ml-1 text-sm text-amber-600">(체험)</span>}</h1></header>
       <StepBar steps={steps} />
       {draftBack && photos.length > 0 && <p className="rounded-lg bg-white px-3 py-2 text-[13px] text-sub">쓰던 제보를 불러왔어요. 올려 둔 사진과 메모가 그대로 있어요.</p>}
-      <p className="text-[13px] text-sub">얼굴·차량 번호판이 나오지 않게, 길에서만 찍어 주세요. 사진 속 위치 정보(EXIF)는 지우고 저장합니다.</p>
+      <p className="break-keep text-[13px] leading-snug text-sub"><span className="block">얼굴·차량 번호판이 나오지 않게,</span><span className="block">길에서만 찍어 주세요.</span><span className="block">사진 속 위치 정보(EXIF)는 지우고 저장합니다.</span></p>
 
       <div>
         <p className="mb-1.5 text-sm font-semibold">이런 걸 찍어 주세요</p>
@@ -204,7 +205,7 @@ export default function Report() {
         </div>
       </div>
 
-      <p className="break-keep text-[13px] leading-snug text-sub">제보와 함께 이 브라우저의 식별번호 <span className="whitespace-nowrap font-semibold text-ink">{myReports.clientCode()}</span>{myReports.nickname() ? <>와 별명 <span className="whitespace-nowrap font-semibold text-ink">{myReports.nickname()}</span>이</> : '가'} 저장돼요. 이름·연락처가 아니고, 내 제보 화면에서 확인할 수 있어요.</p>
+      <p className="break-keep text-[13px] leading-snug text-sub">제보와 함께 이 브라우저의 식별번호 <span className="whitespace-nowrap font-semibold text-ink">{myReports.clientCode()}</span>{myReports.nickname() ? <>와 별명 <span className="whitespace-nowrap font-semibold text-ink">{myReports.nickname()}</span>이</> : '가'} 저장돼요. 이름·연락처가 아니고, <span className="whitespace-nowrap">내 제보 화면에서</span> 확인할 수 있어요.</p>
       {error && <p className="text-sm text-danger">{error}</p>}
       <button type="button" disabled={!main || busy || uploading} onClick={submit}
         className="h-[52px] rounded-2xl bg-brand text-base font-semibold text-white disabled:opacity-40">제보 보내기</button>

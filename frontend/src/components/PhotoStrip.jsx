@@ -41,7 +41,7 @@ export default function PhotoStrip({ items, onMemo, onRemove, onMakeMain, onAdd,
           </label>
         )}
       </div>
-      {aiDrafted && <p className="text-[13px] text-sub">AI가 사진마다 보고 쓴 초안이 칸마다 들어 있어요. 고쳐서 보내셔도 됩니다. 제보의 분류와 우선순위 점수는 대표 사진을 기준으로 해요.</p>}
+      {aiDrafted && <p className="text-[13px] text-sub">AI가 사진마다 보고 쓴 초안이 칸마다 들어 있어요. 고쳐서 보내셔도 됩니다. 제보의 분류와 우선순위 점수는 대표 사진을 기준으로 합니다.</p>}
       <ul className="flex flex-col gap-2">
         {items.map((it, i) => (
           <li key={it.key} className="flex flex-col gap-1 rounded-lg bg-page p-2.5">
