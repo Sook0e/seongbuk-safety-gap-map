@@ -69,8 +69,14 @@ def vision_provider() -> str:
     return "mock"
 
 
+# 지도에서 조치 완료 전 제보의 사진도 보여 줄지. 켜면 AI 공개 검수를 통과한 사진(얼굴·번호판·부적절·무관 없음)만 누구에게나 보인다.
+# 기본은 꺼짐(조치 완료 건만 공개, 11/6 팀 결정). 팀이 합의하면 PUBLIC_PHOTOS_AFTER_AI_CHECK=1 로 켠다.
+PUBLIC_PHOTOS_AFTER_AI_CHECK = os.getenv("PUBLIC_PHOTOS_AFTER_AI_CHECK", "").lower() in ("1", "true", "yes")
+
 OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini")
 ANTHROPIC_VISION_MODEL = os.getenv("ANTHROPIC_VISION_MODEL", "claude-sonnet-5-5")
+# 공개 검수(얼굴·번호판 등 예/아니오 판단)는 분류보다 단순해서 작은 모델로 돌려 비용과 시간을 줄인다. 바꾸려면 환경변수로.
+ANTHROPIC_MODERATION_MODEL = os.getenv("ANTHROPIC_MODERATION_MODEL", "claude-haiku-5-5")
 
 # 사진 제한. Vercel 함수는 요청 본문이 4.5MB까지라 그보다 작게 둔다.
 MAX_UPLOAD_MB = float(os.getenv("MAX_UPLOAD_MB", "4"))
