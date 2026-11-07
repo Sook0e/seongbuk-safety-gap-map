@@ -15,12 +15,20 @@ export default function ClientIdBox() {
         <span className="font-semibold">이 브라우저의 식별번호</span>
         <span className="rounded bg-page px-2 py-1 font-mono text-[15px] tracking-wider text-ink">{code}</span>
       </div>
-      <p className="text-[13px] leading-snug text-sub">제보를 보낼 때 이 번호가 함께 저장돼요. 같은 브라우저에서 반복해서 올린 제보를 담당자가 가려내는 데만 쓰고, 이름이나 연락처가 아니라서 누구인지는 알 수 없어요. 브라우저 데이터를 지우면 새 번호가 생겨요.</p>
+      <p className="flex flex-col gap-1 text-[13px] leading-snug text-sub">
+        <span className="text-balance">제보를 보낼 때 이 번호가 함께 저장돼요.</span>
+        <span className="text-balance">같은 브라우저에서 반복해서 올린 제보를 담당자가 가려내는 데만 쓰고,<br />이름이나 연락처가 아니라서 누구인지는 알 수 없어요.</span>
+        <span className="text-balance">브라우저 데이터를 지우면 새 번호가 생겨요.</span>
+      </p>
       {locked
         ? <p className="text-[13px] text-sub">별명 <strong className="text-ink">{nick}</strong> · 직접 정한 별명이라 바꿀 수 없어요.</p>
         : (
           <div className="flex flex-col gap-1 text-[13px] text-sub">
-            <p>별명 <strong className="text-ink">{nick}</strong> · 처음 들어올 때 자동으로 정해졌어요. 마음에 안 들면 <strong>딱 한 번</strong> 직접 정할 수 있어요.</p>
+            <p className="flex flex-col gap-0.5">
+              <span>별명 <strong className="text-ink">{nick}</strong></span>
+              <span>처음 들어올 때 자동으로 정해졌어요.</span>
+              <span className="text-balance">마음에 안 들면 <strong>딱 한 번</strong> 직접 정할 수 있어요.</span>
+            </p>
             <div className="flex gap-2">
               <input value={draft} maxLength={20} onChange={(e) => setDraft(e.target.value)} placeholder="직접 정할 별명 (20자까지)" aria-label="직접 정할 별명"
                 className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-white px-3 text-[15px] text-ink" />
@@ -29,7 +37,7 @@ export default function ClientIdBox() {
                 if (myReports.setNickname(draft)) { setNick(myReports.nickname()); setMsg('별명을 저장했어요. 앱을 껐다 켜도 이 브라우저에서는 유지돼요.') }
               }} className="h-11 shrink-0 rounded-lg bg-brand px-4 text-sm font-semibold text-white disabled:opacity-40">정하기</button>
             </div>
-            <span>실명이나 연락처는 쓰지 마세요. 담당자 화면에 이 별명이 보여요.</span>
+            <span className="flex flex-col gap-0.5"><span>실명이나 연락처는 쓰지 마세요.</span><span>담당자 화면에 이 별명이 보여요.</span></span>
           </div>
         )}
       {msg && <p className="text-[13px] text-sub">{msg}</p>}
