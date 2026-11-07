@@ -61,7 +61,7 @@ export default function MyReports() {
 
   if (error) return <p className="p-5 text-danger">불러오기 실패: {error}</p>
   if (!list) return <p className="p-5">불러오는 중…</p>
-  if (!list.length) return <section className="min-h-full bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p><div className="mt-4"><ClientIdBox /></div></section>
+  if (!list.length) return <section className="min-h-full break-keep bg-page p-5 pt-6"><header className="resident-header"><Brand /><h1>내 제보</h1></header><p className="mt-4 text-sub">아직 이 폰에서 보낸 제보가 없습니다.</p><div className="mt-4"><ClientIdBox /></div></section>
 
   // 접수 후 경과일, 완료까지 걸린 일수, 처리 대상 아님 사유 (리뷰: '처리 상황도 이유도 모른다'는 불만 대응)
   const days = (a, b = Date.now()) => Math.max(0, Math.floor((new Date(b).getTime() - new Date(a).getTime()) / 86400000))
@@ -80,7 +80,7 @@ export default function MyReports() {
     .map((h) => ({ at: h.at, text: h.from_status === h.to_status ? h.note : h.to_status_label }))
   const chip = (st, notTarget) => (notTarget ? 'bg-gray-200 text-sub' : st === 'done' ? 'bg-[#EBEFCB] text-brand' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
   return (
-    <section className="flex min-h-full flex-col gap-3.5 bg-page px-5 pb-6 pt-6 text-ink">
+    <section className="flex min-h-full flex-col gap-3.5 break-keep bg-page px-5 pb-6 pt-6 text-ink">
       <header className="resident-header"><Brand /><h1>내 제보</h1></header>
       <p className="text-sm text-sub">이 브라우저에서 보낸 제보 <strong className="text-brand">{list.length}건</strong></p>
       {list.map((r) => {

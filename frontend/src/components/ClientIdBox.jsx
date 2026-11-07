@@ -10,7 +10,7 @@ export default function ClientIdBox() {
   const [draft, setDraft] = useState('')
   const locked = !myReports.nicknameIsAuto() // 직접 정한 별명은 바꿀 수 없다 (제보마다 이름이 바뀌어 반복 제보를 가리기 어려워지는 것을 막음). 자동 별명이면 1번 정할 수 있음
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-white p-3 text-sm">
+    <div className="flex flex-col gap-1.5 break-keep rounded-xl border border-line bg-white p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold">이 브라우저의 식별번호</span>
         <span className="rounded bg-page px-2 py-1 font-mono text-[15px] tracking-wider text-ink">{code}</span>

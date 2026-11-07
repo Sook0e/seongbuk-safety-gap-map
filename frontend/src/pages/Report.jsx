@@ -189,7 +189,7 @@ export default function Report() {
       </div>
 
       {photos.length > 0 && <PhotoStrip items={photos} onMemo={setMemo} onRemove={removePhoto} onMakeMain={makeMain} onAdd={addFiles} adding={uploading} max={MAX_PHOTOS} aiDrafted={aiDrafted} />}
-      {main?.ai && <AIResultCard ai={main.ai} highlight title={photos.length > 1 ? '대표 사진 AI 판별 결과' : undefined} />}
+      {main?.ai && <AIResultCard ai={main.ai} highlight title={photos.length > 1 ? '대표 사진 AI 판별 결과' : undefined} others={photos.slice(1).map((p, i) => ({ n: i + 2, ai: p.ai })).filter((x) => x.ai)} />}
       {main && <NearbyReports pos={pos} accuracy={pos?.accuracy} category={main.ai && !main.ai.mock ? main.ai.category : null} />}
 
       <div>
