@@ -576,3 +576,21 @@ button:not(:disabled),select{
   .admin-detail-score { grid-column: auto; grid-row: auto; }
   .admin-map-legend { position: static; margin-top: 12px; }
 }
+
+.resident-report-memo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.resident-report-memo > * {
+  grid-area: 1 / 1;
+  min-height: 4rem;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.resident-report-memo > span { visibility: hidden; }
+.resident-report-memo > textarea {
+  width: 100%;
+  border-radius: inherit;
+  resize: none;
+}
