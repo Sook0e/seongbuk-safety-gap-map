@@ -29,7 +29,7 @@ export default function PhotoGuide() {
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
       <p className="text-sm font-semibold">이렇게 찍어 주세요</p>
-      <p className="break-keep text-[13px] leading-snug text-sub"><span className="block">사진을 가로세로 3칸씩 9칸으로 나눈다고 생각하고,</span><span className="block text-balance">문제 부분이 가운데 빨간 칸에 오도록 맞춰 찍어 주세요.</span></p>
+      <p className="text-[13px] leading-snug text-sub">사진을 가로세로 3칸씩 9칸으로 나눈다고 생각하고, 문제 부분이 가운데 빨간 칸에 오도록 맞춰 찍어 주세요.</p>
       <div className="grid grid-cols-3 gap-2">
         {CASES.map((c) => (
           <figure key={c.title} className="flex flex-col gap-1">
@@ -38,7 +38,7 @@ export default function PhotoGuide() {
             </div>
             <figcaption className="text-[13px] leading-snug">
               <span className={`font-semibold ${c.ok ? 'text-brand' : 'text-danger'}`}>{c.title}</span>
-              <span className="block break-keep text-balance text-sub">{c.desc}</span>
+              <span className="block text-sub">{c.desc}</span>
             </figcaption>
           </figure>
         ))}

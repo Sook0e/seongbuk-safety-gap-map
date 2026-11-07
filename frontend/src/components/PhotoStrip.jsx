@@ -4,20 +4,6 @@ import { qualityText } from '../lib/photoQuality.js'
 // 제보 화면: 붙인 사진(최대 4장) 한 줄과, 사진 수만큼의 메모 칸. 사진마다 번호를 달고 메모 칸 이름에도 같은 번호를 쓴다.
 // 사진 모서리의 X로 지우고(대표를 지우면 다음 사진이 대표가 됨), 대표가 아닌 사진은 '대표로 지정'으로 대표를 바꾼다.
 // 대표 사진 한 장만 제보의 AI 분류·점수에 쓰인다. AI는 사진마다 본 내용으로 메모 초안을 칸마다 채운다.
-// 사진마다 AI가 본 결과를 한 줄로 보여 준다. 제보의 분류·점수는 대표 사진 기준이고, 나머지 사진은 이 줄로 확인한다.
-function PhotoAI({ ai }) {
-  if (!ai) return null
-  const conf = Number.isFinite(Number(ai.confidence)) ? Math.max(0, Math.min(100, Number(ai.confidence))) : null
-  return (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-      <span className={`rounded-full px-2 py-0.5 font-semibold ${ai.mock ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-900'}`}>{ai.mock ? 'AI 임시 결과' : 'AI 판별'}</span>
-      <span className="font-semibold">{ai.category}</span>
-      {conf !== null && <span className="text-sub">신뢰도 {conf}%</span>}
-      {!ai.mock && conf !== null && conf < 50 && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-800">담당자 확인 필요</span>}
-    </p>
-  )
-}
-
 export default function PhotoStrip({ items, onMemo, onRemove, onMakeMain, onAdd, adding, max = 4, aiDrafted }) {
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-line bg-white p-3">
@@ -41,7 +27,7 @@ export default function PhotoStrip({ items, onMemo, onRemove, onMakeMain, onAdd,
           </label>
         )}
       </div>
-      {aiDrafted && <p className="text-[13px] text-sub">AI가 사진마다 보고 쓴 초안이 칸마다 들어 있어요. 고쳐서 보내셔도 됩니다. 제보의 분류와 우선순위 점수는 대표 사진을 기준으로 합니다.</p>}
+      {aiDrafted && <p className="text-[13px] text-sub">AI가 사진마다 보고 쓴 초안이 칸마다 들어 있어요. 고쳐서 보내셔도 됩니다.</p>}
       <ul className="flex flex-col gap-2">
         {items.map((it, i) => (
           <li key={it.key} className="flex flex-col gap-1 rounded-lg bg-page p-2.5">
@@ -50,7 +36,6 @@ export default function PhotoStrip({ items, onMemo, onRemove, onMakeMain, onAdd,
               <input value={it.memo} maxLength={200} onChange={(e) => onMemo(i, e.target.value)}
                 placeholder="예: 담장 아래쪽 금이 간 곳" className="h-11 rounded-lg border border-line bg-white px-3 text-[15px] text-ink" />
             </label>
-            <PhotoAI ai={it.ai} />
             {qualityText(it.quality) && <p className="rounded bg-amber-50 px-2 py-1.5 text-[13px] leading-snug">{qualityText(it.quality)}</p>}
             <div className="flex items-center justify-between text-[13px] text-sub">
               <span>{it.takenAt ? `촬영 ${formatTaken(it.takenAt)}` : '촬영 일시를 알 수 없어요'}</span>
