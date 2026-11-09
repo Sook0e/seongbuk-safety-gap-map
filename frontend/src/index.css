@@ -425,7 +425,6 @@ button:not(:disabled),select{
   gap: 14px;
   padding: 18px 24px 24px;
 }
-.resident-home { gap: 27px; }
 .resident-card {
   border: 1px solid var(--color-line);
   border-radius: 20px;
@@ -438,6 +437,18 @@ button:not(:disabled),select{
   background: var(--color-brand);
   color: white;
   padding: 10px 14px;
+  font-weight: 700;
+}
+.resident-secondary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  background: #e9eff7;
+  color: var(--color-brand);
+  font-size: 13px;
   font-weight: 700;
 }
 .resident-primary:disabled { opacity: .45; }
@@ -461,13 +472,14 @@ button:not(:disabled),select{
   color: white;
   font: 700 14px/1 'Noto Sans KR', sans-serif;
 }
-/* 묶음 원: 바깥 고리는 상태별 색 비율, 안쪽은 남색 숫자 원 (흰 선으로 고리와 구분) */
+/* 묶음 원: 라임 고리는 완료 비율, 안쪽 숫자는 제보 수 */
 .resident-cluster-ring span {
   display: grid;
   place-items: center;
   width: 100%;
   height: 100%;
-  padding: 6px;
+  padding: 5px;
+  border: 2px solid white;
   border-radius: 50%;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
 }
@@ -482,6 +494,7 @@ button:not(:disabled),select{
   color: white;
   font: 700 14px/1 'Noto Sans KR', sans-serif;
 }
+.resident-neighborhood-map .leaflet-tile-pane { filter: grayscale(1); }
 .resident-map-pin.is-done img { filter: brightness(0); } /* 라임 바탕 위에서는 흰 아이콘이 안 보여서 어둡게 */
 .resident-map-pin span {
   display: grid;

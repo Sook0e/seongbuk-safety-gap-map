@@ -9,13 +9,14 @@ import { addBaseLayer } from '../lib/map.js'
 import PhotoViewer from '../components/PhotoViewer.jsx'
 import { myReports } from '../lib/myReports.js'
 import { groupPoints, MAX_CLUSTER_ZOOM } from '../lib/cluster.js'
+import { REPORT_STATUS_COLORS as COLORS } from '../lib/reportStatus.js'
 
 // 주민 3 지도. 필터: 상태(전체·검토 중·조치 중·조치 완료·재확인 필요)와 유형을 눌러서 고른다. 검색창은 없앴다(멘토·팀장 11/9). 소방용수 '점검 필요' 점은 주민이 신경 쓰는 정보가 아니라(멘토 지적) 이 화면에서 뺐고 관리자 목록에만 남김 (docs/decisions.md). 하단 시트에 선택 항목 요약.
 // 배경 타일 설정은 lib/map.js (OSM 표준 타일, 출처 표기 필수)
 const CENTER = [37.5894, 127.0167]
-const COLORS = { received: '#001a47', review: '#a7430d', action: '#a7430d', done: '#bfd300' }
+const ZONE_STYLE = { color: '#aa7894', weight: 1.5, opacity: 0.85, fillColor: '#edccd9', fillOpacity: 0.35, dashArray: '4 4' }
 // 상태 필터 겸 범례: 점 색은 지도 핀 색과 같다. 지도에는 담당자가 확인을 시작한 제보만 나온다(접수 상태는 홈에 '확인 대기 N건'으로만, 11/9 팀 노션 기준)
-const STATUS_FILTERS = [['all', '전체', null], ['review', '검토 중', COLORS.review], ['action', '조치 중', COLORS.action], ['done', '조치 완료', COLORS.done], ['recheck', '조치 후 재확인 필요', '#dc2626']]
+const STATUS_FILTERS = [['all', '전체', null], ['review', '검토', COLORS.review], ['action', '조치', COLORS.action], ['done', '완료', COLORS.done], ['recheck', '재확인 필요', COLORS.recheck]]
 const statusMatch = (p, key) => (key === 'all' ? true : key === 'recheck' ? !!p.recheck : p.status === key)
 const catName = (p) => plainCategory(p.category) ?? '기타'
 // 멀리서 보면 가까운 제보를 숫자 원으로 묶고, 확대하면 낱개로 풀린다 (lib/cluster.js)
@@ -54,12 +55,12 @@ export default function MapPage() {
     map.current = L.map(el.current, { zoomControl: false }).setView(CENTER, 14)
     addBaseLayer(map.current)
     L.control.zoom({ position: 'bottomright' }).addTo(map.current)
-    // 어린이보호구역 경계: 얇은 회색 선. 제보·공백 점보다 아래에 깔고, 눌러도 반응하지 않음
+    // 어린이 보호구역 경계는 제보 표시보다 아래에 둔다.
     map.current.createPane('zones').style.zIndex = 350
     api.zones().then((z) => {
       const poly = z.features.filter((f) => f.geometry.type === 'MultiPolygon' && f.properties.kind === '어린이')
       L.geoJSON({ type: 'FeatureCollection', features: poly }, {
-        pane: 'zones', interactive: false, style: { color: '#dc2626', weight: 1.5, opacity: 0.8, fillColor: '#f87171', fillOpacity: 0.2 }, // 어린이보호구역 도로 포장색(빨강). 회색 '점검 필요'·주황 '접수' 점과 구분
+        pane: 'zones', interactive: false, style: ZONE_STYLE,
       }).addTo(map.current)
     }).catch(() => {})
     layer.current = L.layerGroup().addTo(map.current)
@@ -74,21 +75,17 @@ export default function MapPage() {
     return reports.map((f) => ({ ...f, _color: COLORS[f.properties.status] ?? COLORS.received }))
       .filter(({ properties: p }) => (cat === 'all' || catName(p) === cat) && statusMatch(p, filter))
   }, [reports, filter, cat])
-  // 상태 칩에 붙일 건수: 지금 고른 유형 안에서 센다
-  const statusCount = useMemo(() => Object.fromEntries(STATUS_FILTERS.map(([k]) => [k, reports
-    .filter(({ properties: p }) => (cat === 'all' || catName(p) === cat) && statusMatch(p, k)).length])), [reports, cat])
-
   useEffect(() => {
     layer.current.clearLayers()
     groupPoints(shown, map.current, view.zoom, toLatLng).forEach((items) => {
       if (items.length === 1) {
         const f = items[0]
         const [lon, lat] = f.geometry.coordinates
-        // 조치 완료 뒤 '아직 그대로'라는 주민 의견이 더 많은 곳은 빨간 테두리로 표시
+        // 조치 후 재확인 표시에는 필터와 같은 주황 테두리를 쓴다.
         const recheck = f.properties.recheck
         const icon = L.divIcon({
           className: `resident-map-pin${f.properties.status === 'done' ? ' is-done' : ''}`, iconSize: [32, 32],
-          html: `<span style="background:${f._color};border-color:${recheck ? '#dc2626' : '#fff'}"><img src="${residentAsset('home-imgPin.svg')}" alt=""></span>`,
+          html: `<span style="background:${f._color};border-color:${recheck ? COLORS.recheck : '#fff'}"><img src="${residentAsset('home-imgPin.svg')}" alt=""></span>`,
         })
         L.marker([lat, lon], { icon, alt: plainCategory(f.properties.category) ?? '주민 제보' })
           .on('click', () => { setSelected(f); setConfirmMsg('') })
@@ -98,17 +95,13 @@ export default function MapPage() {
       const lls = items.map((f) => [f.geometry.coordinates[1], f.geometry.coordinates[0]])
       const center = lls.reduce((a, c) => [a[0] + c[0] / lls.length, a[1] + c[1] / lls.length], [0, 0])
       const size = Math.min(64, 40 + items.length * 2) // 고리가 들어갈 만큼 조금 크게
-      // 둘레 고리를 상태별 색 비율(접수 / 검토·조치 중 / 조치 완료)로 칠해서, 묶음 안에서도 조치 완료 비율이 보이게 한다
-      const cnt = { received: 0, mid: 0, done: 0 }
-      items.forEach((f) => { const st = f.properties.status; cnt[st === 'done' ? 'done' : st === 'received' ? 'received' : 'mid'] += 1 })
-      let acc = 0
-      const ring = [['received', COLORS.received], ['mid', COLORS.review], ['done', COLORS.done]].filter(([k]) => cnt[k] > 0)
-        .map(([k, c]) => { const from = acc; acc += (cnt[k] / items.length) * 100; return `${c} ${from}% ${acc}%` }).join(',')
+      const completed = items.filter((item) => item.properties.status === 'done').length
+      const percent = completed / items.length * 100
       const icon = L.divIcon({
         className: 'resident-cluster-ring', iconSize: [size, size],
-        html: `<span style="background:conic-gradient(${ring})"><b>${items.length}</b></span>`,
+        html: `<span style="background:conic-gradient(${COLORS.done} 0% ${percent}%, #d7dfe5 ${percent}% 100%)"><b>${items.length}</b></span>`,
       })
-      L.marker(center, { icon, alt: `제보 ${items.length}건 묶음` })
+      L.marker(center, { icon, title: `제보 ${items.length}건 · 완료 ${Math.round(percent)}%` })
         .on('click', () => { setSelected(null); map.current.fitBounds(L.latLngBounds(lls), { padding: [70, 70], maxZoom: MAX_CLUSTER_ZOOM }) })
         .addTo(layer.current)
     })
@@ -131,13 +124,13 @@ export default function MapPage() {
   return (
     <section className="resident-screen">
       <ResidentHeader caption="성북구 주민 제보" title="동네 지도" />
-      <p className="text-sm leading-snug text-sub">주민이 올린 제보가 지금 어디까지 처리됐는지 보여요. 담당자가 확인한 제보만 나오고, 핀을 누르면 자세히 볼 수 있어요.</p>
+      <p className="text-sm leading-snug text-sub">주민이 올린 제보가 지금 어디까지 처리됐는지 보여요.</p>
       <div className="grid gap-2">
-        <div role="group" aria-label="처리 상태" className="-mx-6 flex gap-2 overflow-x-auto px-6 pb-0.5 [scrollbar-width:none]">
+        <div role="group" aria-label="처리 상태" className="grid grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.7fr)] gap-1">
           {STATUS_FILTERS.map(([k, label, color]) => (
             <button key={k} type="button" aria-pressed={filter === k} onClick={() => { setFilter(k); setSelected(null) }}
-              className={`flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-bold ${filter === k ? 'bg-ink text-white' : 'border border-line bg-white text-ink'}`}>
-              {color && <span className="size-2.5 rounded-full border border-white" style={{ background: color }} />}{label} {statusCount[k]}
+              className={`flex min-h-11 items-center justify-center gap-1 rounded-xl border px-0.5 text-[11px] font-bold leading-tight ${filter === k ? 'border-brand bg-brand text-white' : 'border-line bg-white text-ink'}`}>
+              {color && <span aria-hidden="true" className="size-[7px] shrink-0 rounded-full" style={{ background: color }} />}{label}
             </button>
           ))}
         </div>
@@ -151,19 +144,19 @@ export default function MapPage() {
           <span aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 size-2.5 -translate-y-[70%] rotate-45 border-b-2 border-r-2 border-ink" />
         </label>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-bold">
-        <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border-2 border-red-600" style={{ background: COLORS.done }} />빨간 테두리 = 조치 후 재확인 필요</div>
-        <div className="flex items-center gap-1"><span className="h-2 w-3 border border-red-600 bg-red-300" />어린이보호구역</div>
-      </div>
       <div className="relative">
-        <div ref={el} className="h-[min(47dvh,440px)] min-h-60 overflow-hidden rounded-[16px]" aria-label="성북구 주민 제보 지도" />
+        <div ref={el} className="h-[min(47dvh,440px)] min-h-60 overflow-hidden rounded-[16px] resident-neighborhood-map" aria-label="성북구 주민 제보 지도" />
         <span className="resident-chip pointer-events-none absolute left-3 top-3 z-[500] bg-white">
           {view.zoom < MAX_CLUSTER_ZOOM ? '축소 · 제보 묶음' : '확대 · 개별 위치'}
         </span>
       </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-white px-3 py-2 text-[11px] font-bold">
+        <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-4 rounded-sm border border-dashed border-[#aa7894] bg-[#edccd9]/50" />어린이 보호구역</span>
+        {filter === 'recheck' && <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-full border-2 border-[#c17b29] bg-accent" />재확인 필요</span>}
+      </div>
       {!p && <article className="resident-card">
         <h2 className="text-sm font-bold">이 지역 제보 {inView}건</h2>
-        <p className="mt-1 text-xs text-sub">{shown.length === 0 ? '고른 조건에 맞는 제보가 없어요. 다른 상태나 유형을 눌러 보세요.' : '묶음을 누르거나 지도를 확대하면 개별 제보 위치를 볼 수 있어요.'}</p>
+        <p className="mt-1 text-xs text-sub">{shown.length === 0 ? '고른 조건에 맞는 제보가 없어요. 다른 상태나 유형을 눌러 보세요.' : '원 안 숫자는 제보 수, 라임색 링은 완료 비율이에요. 묶음을 누르거나 지도를 확대하면 개별 제보를 볼 수 있어요.'}</p>
       </article>}
       {viewer && <PhotoViewer before={shots.before} after={shots.after} onClose={() => setViewer(false)} />}
       {p && (

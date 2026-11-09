@@ -1,6 +1,6 @@
-import { Navigate, Outlet, Route, Routes, useSearchParams } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
+import { useLayoutEffect, useRef } from 'react'
 import BottomBar from './components/BottomBar.jsx'
-import Intro from './pages/Intro.jsx'
 import Home from './pages/Home.jsx'
 import Report from './pages/Report.jsx'
 import MapPage from './pages/MapPage.jsx'
@@ -16,9 +16,12 @@ import AdminReport from './pages/admin/AdminReport.jsx'
 
 // 화면 목록은 CLAUDE.md '화면' 표와 같다. 주민은 모바일, 관리자는 데스크톱(/admin).
 function ResidentLayout() {
+  const main = useRef(null)
+  const { pathname } = useLocation()
+  useLayoutEffect(() => { main.current?.scrollTo(0, 0) }, [pathname])
   return (
     <div className="mx-auto flex h-full max-w-[402px] flex-col bg-page">
-      <main className="min-h-0 flex-1 overflow-y-auto break-keep [overflow-wrap:break-word]"> {/* 한글은 단어 중간에서 끊지 않는다 */}
+      <main ref={main} className="min-h-0 flex-1 overflow-y-auto break-keep [overflow-wrap:break-word]"> {/* 한글은 단어 중간에서 끊지 않는다 */}
         <Outlet />
       </main>
       <BottomBar />
@@ -34,12 +37,14 @@ function ReportRoute() {
 export default function App() {
   return (
     <Routes>
-      <Route index element={<Intro />} /> {/* QR 진입 */}
       <Route element={<ResidentLayout />}>
+        <Route index element={<Navigate to="/home" replace />} />
         <Route path="home" element={<Home />} />
         <Route path="report" element={<ReportRoute />} />  {/* 주민 2 제보 */}
         <Route path="map" element={<MapPage />} />    {/* 주민 3 지도 */}
-        <Route path="my" element={<MyReports />} />   {/* 주민 4 내 제보 */}
+        <Route path="my" element={<MyReports mode="activity" />} />
+        <Route path="my/reports" element={<MyReports mode="list" />} />
+        <Route path="my/reports/:id" element={<MyReports mode="detail" />} />
         <Route path="guide" element={<Guide />} />    {/* 서비스 안내·포인트(준비 중) */}
       </Route>
       <Route path="admin" element={<AdminLayout />}>
