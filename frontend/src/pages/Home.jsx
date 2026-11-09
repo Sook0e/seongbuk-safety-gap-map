@@ -1,173 +1,204 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ResidentHeader, { residentAsset } from '../components/ResidentHeader.jsx'
 import PhotoViewer from '../components/PhotoViewer.jsx'
 import ProcessPicture from '../components/ProcessPicture.jsx'
 import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
-import { plainCategory } from '../lib/labels.js'
 import { myReports } from '../lib/myReports.js'
+import { REPORT_STATUS_COLORS } from '../lib/reportStatus.js'
+import { ReportBadge, reportTitle } from './MyReports.jsx'
 
-// 홈 순서(11/9 팀 노션 기준): 제보 과정 그림 → 사진으로 제보하기 → 우리 동네 제보 현황 → 내 제보 → 안전왕 순위 → 지도(작게) → 서비스 안내 → 119
-// 제보 현황은 담당자가 확인한 제보 기준이다. 확인을 기다리는 제보는 '확인 대기 N건'처럼 숫자로만 보이고, 사진·내용은 보이지 않는다.
-const STATE_NAME = { review: '검토 중', action: '조치 중', done: '조치 완료' }
-const MINI = [['review', '검토'], ['action', '조치'], ['done', '완료']]
-// "옹벽·축대 표면 벗겨짐 · 보수 완료" 처럼 시설 + 결함 + 결과(또는 지금 단계)
-const itemTitle = (it) => {
-  const what = [it.facility_label && it.facility_label !== '모름' ? it.facility_label : null, plainCategory(it.category) ?? '기타'].filter(Boolean).join(' ')
-  return `${what} · ${it.status === 'done' ? (it.result_label ?? STATE_NAME.done) : STATE_NAME[it.status] ?? it.status_label}`
+const STATUS = [['received', '접수'], ['review', '검토'], ['action', '조치'], ['done', '완료']]
+
+function RankingRows({ rows }) {
+  return (
+    <ol className="grid gap-1.5">
+      {rows.map((row) => (
+        <li key={row.rank} className={`flex min-h-9 items-center gap-2.5 rounded-xl px-2.5 text-xs ${row.rank === 1 || row.is_me ? 'bg-[#ebefcb]' : 'bg-[#e9eff7]'}`}>
+          <span className="w-9 shrink-0 font-bold">{row.rank}위</span>
+          <span className="min-w-0 flex-1 font-semibold">{row.nickname}{row.is_me && ' (나)'}</span>
+          <span className="shrink-0 font-bold">{row.points}점</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function RankingPopup({ summary, onClose }) {
+  const dialog = useRef(null)
+  const [ranking, setRanking] = useState(null)
+  const [error, setError] = useState(false)
+  useEffect(() => {
+    const node = dialog.current
+    node.showModal()
+    return () => node.close()
+  }, [])
+  useEffect(() => {
+    let alive = true
+    api.ranking(100, myReports.clientKey())
+      .then((rows) => { if (alive) setRanking(rows) })
+      .catch(() => { if (alive) setError(true) })
+    return () => { alive = false }
+  }, [])
+  return (
+    <dialog ref={dialog} onCancel={(event) => { event.preventDefault(); onClose() }} aria-labelledby="ranking-title"
+      className="resident-card fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-32px)] max-w-[350px] overflow-y-auto p-[18px] text-ink shadow-xl backdrop:bg-brand/35">
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="ranking-title" className="text-xl font-bold">우리 동네 안전왕</h2>
+          <button type="button" aria-label="순위 닫기" onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e9eff7]">
+            <img src={residentAsset('ranking-close.svg')} alt="" />
+          </button>
+        </div>
+        <p className="text-xs text-sub">담당자가 확인한 제보 1건당 {summary.points_per_report}점 · 순위에만 반영</p>
+        {error ? <p role="alert" className="text-sm text-sub">전체 순위를 불러오지 못했어요. 닫은 뒤 다시 열어 주세요.</p>
+          : !ranking ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
+          : <RankingRows rows={ranking.top} />}
+        {ranking?.me && !ranking.top.some((row) => row.is_me) && (
+          <p className="rounded-xl bg-[#ebefcb] px-3 py-2 text-sm font-bold">내 순위 {ranking.me.rank}위 · {ranking.me.points}점</p>
+        )}
+        {ranking?.total_players > ranking?.top.length && <p className="text-xs text-sub">상위 {ranking.top.length}명 표시 · 총 {ranking.total_players}명</p>}
+      </div>
+    </dialog>
+  )
 }
 
 export default function Home() {
-  const [summary, setSummary] = useState(null) // GET /api/reports/summary
+  const [summary, setSummary] = useState(null)
   const [error, setError] = useState(false)
-  const [pairs, setPairs] = useState({})        // 조치 완료 제보 중 조치 전·후 사진이 둘 다 있는 것 {public_id: {before, after}}
-  const [viewer, setViewer] = useState(null)    // 조치 전·후 사진 크게 보기 {before, after}
-  const [mine, setMine] = useState(null) // 내 제보 (이 브라우저에서 보낸 것)
-  const [rank, setRank] = useState(null) // 안전왕 순위 {top, me, total_players, points_per_report}
-  const [rankAll, setRankAll] = useState(false) // 전체 순위 보기
+  const [stats, setStats] = useState(null)
+  const [pairs, setPairs] = useState({})
+  const [viewer, setViewer] = useState(null)
+  const [mine, setMine] = useState(null)
+  const [ranking, setRanking] = useState(null)
+  const [rankOpen, setRankOpen] = useState(false)
   const [rankError, setRankError] = useState(false)
   useEffect(() => {
-    api.reportsSummary(10).then((s) => {
-      setSummary(s)
-      // 완료된 제보의 사진은 공개 대상이다(지도의 조치 전·후 보기와 같다). 전·후 사진이 둘 다 있을 때만 버튼을 보여 준다
-      const doneIds = s.recent.filter((it) => it.status === 'done').map((it) => it.public_id)
+    api.reportsSummary(5).then((result) => {
+      setSummary(result)
+      const doneIds = result.recent.filter((report) => report.status === 'done').map((report) => report.public_id)
       if (doneIds.length) api.myReports(doneIds).then((rows) => setPairs(Object.fromEntries(rows
-        .filter((r) => r.photo_url && r.after_photo_url).map((r) => [r.public_id, { before: r.photo_url, after: r.after_photo_url }])))).catch(() => {})
+        .filter((row) => row.photo_url && row.after_photo_url)
+        .map((row) => [row.public_id, { before: row.photo_url, after: row.after_photo_url }])))).catch(() => {})
     }).catch(() => setError(true))
-    const ids = myReports.ids()
-    if (ids.length) api.myReports(ids, myReports.clientKey()).then(setMine).catch(() => setMine([]))
-    else setMine([])
+    api.stats().then(setStats).catch(() => {})
+    const clientKey = myReports.clientKey()
+    api.myReports(myReports.ids(), clientKey).then((rows) => setMine(rows.find((row) => !row.not_target) ?? false)).catch(() => setMine(false))
+    api.ranking(3, clientKey).then(setRanking).catch(() => setRankError(true))
   }, [])
 
-  // 순위: 처음엔 상위 5명, '전체 순위 보기'를 누르면 100명까지
-  useEffect(() => {
-    let alive = true
-    api.ranking(rankAll ? 100 : 5, myReports.clientKey()).then((r) => alive && setRank(r)).catch(() => alive && setRankError(true))
-    return () => { alive = false }
-  }, [rankAll])
-
-  const recent = useMemo(() => (summary?.recent ?? []).slice(0, 5), [summary])
-  const myLatest = useMemo(() => (mine ?? []).filter((r) => !r.not_target)
-    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 2), [mine])
-  const inProgress = summary ? summary.review + summary.action : 0
+  const counts = summary && { received: summary.pending, review: summary.review, action: summary.action, done: summary.done }
+  const maxCount = counts ? Math.max(1, ...Object.values(counts)) : 1
 
   return (
-    <section className="resident-screen resident-home">
+    <section className="resident-screen">
       <ResidentHeader caption="우리 동네 안전 체크!" title="안전캐치" />
-      <div className="flex flex-col gap-3 rounded-[20px] bg-[#ebefcb] p-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-bold">제보하면 이렇게 처리돼요</h2>
-          <Link to="/guide" className="grid min-h-[44px] shrink-0 place-items-center px-1 text-[13px] font-bold underline">자세히 보기</Link>
+      <Link to="/report?demo=1" className="flex min-h-20 items-center gap-3 rounded-2xl bg-accent px-3.5 py-3 text-brand">
+        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white"><img src={residentAsset('demo-photos.svg')} alt="" /></span>
+        <span className="min-w-0 flex-1">
+          <strong className="block text-lg leading-tight">사진 제보 체험하기</strong>
+          <span className="mt-1 block text-xs">처음이라면 체험 사진으로 시작해요.</span>
+        </span>
+        <img src={residentAsset('home-imgChev.svg')} alt="" />
+      </Link>
+      <Link to="/report" className="resident-primary grid place-items-center">사진으로 제보하기</Link>
+
+      <section className="grid gap-2 rounded-[20px] bg-[#ebefcb] p-3.5">
+        <div className="flex items-center gap-2">
+          <img src={residentAsset('safety-mascot.png')} width="33" height="33" alt="" />
+          <h2 className="text-base font-bold">제보는 이렇게 처리돼요!</h2>
         </div>
         <ProcessPicture />
-      </div>
-      <Link to="/report" className="resident-primary flex items-center justify-center gap-2">
-        <img src={residentAsset('home-imgCamera1.svg')} alt="" />사진으로 제보하기
-      </Link>
-
-      <div className="flex flex-col gap-3.5">
-        <h2 className="text-lg font-bold">우리 동네 제보 현황</h2>
-        {error ? <p className="text-sm text-sub">제보 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
-          : !summary ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
-          : summary.reviewed_total + summary.pending === 0 ? <p className="text-sm text-sub">아직 접수된 제보가 없어요. 첫 제보를 남겨 주세요.</p>
-          : <>
-            <article className="resident-card flex flex-col gap-3">
-              {summary.reviewed_total > 0 ? <>
-                <p className="text-sm">담당자가 확인한 제보 <b className="text-xl">{summary.reviewed_total}건</b></p>
-                <div className="flex h-3 overflow-hidden rounded-full bg-gray-200" role="img" aria-label={`검토·조치 중 ${inProgress}건, 조치 완료 ${summary.done}건`}>
-                  {inProgress > 0 && <span style={{ width: `${(inProgress / summary.reviewed_total) * 100}%`, background: '#a7430d' }} />}
-                  {summary.done > 0 && <span style={{ width: `${(summary.done / summary.reviewed_total) * 100}%`, background: '#bfd300' }} />}
-                </div>
-                <ul className="grid grid-cols-2 gap-2 text-center">
-                  <li className="flex flex-col items-center gap-0.5"><span className="flex items-center gap-1 text-xs font-semibold"><span className="size-2 rounded-full" style={{ background: '#a7430d' }} />검토·조치 중</span><span className="text-lg font-bold">{inProgress}건</span></li>
-                  <li className="flex flex-col items-center gap-0.5"><span className="flex items-center gap-1 text-xs font-semibold"><span className="size-2 rounded-full" style={{ background: '#bfd300' }} />조치 완료</span><span className="text-lg font-bold">{summary.done}건</span></li>
-                </ul>
-              </> : <p className="text-sm">아직 담당자가 확인한 제보가 없어요.</p>}
-              <p className="border-t border-line pt-3 text-sm"><b>확인 대기 {summary.pending}건</b><span className="text-xs text-sub"> · 담당자가 확인하면 지도와 이 목록에 올라와요</span></p>
-            </article>
-            {recent.length > 0 && <article className="resident-card flex flex-col gap-3">
-              <h3 className="text-xs font-semibold text-sub">최근 확인된 제보</h3>
-              <ul className="grid gap-3.5">
-                {recent.map((it) => (
-                  <li key={it.public_id} className="grid gap-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 flex-1 text-sm font-bold leading-snug">{itemTitle(it)}</p>
-                      {pairs[it.public_id] && <button type="button" onClick={() => setViewer(pairs[it.public_id])}
-                        className="min-h-[44px] shrink-0 rounded-xl bg-brand px-3 text-[13px] font-bold leading-tight text-white">조치 사진<br />확인하기</button>}
-                    </div>
-                    <ol className="grid grid-cols-3 gap-1" aria-label="진행 단계">
-                      {MINI.map(([k, label], i) => {
-                        const now = MINI.findIndex(([key]) => key === it.status)
-                        return <li key={k} className="flex flex-col items-center gap-1">
-                          <span className={`h-1.5 w-full rounded ${i <= now ? 'bg-brand' : 'bg-gray-200'}`} />
-                          <span className={`text-[11px] ${i === now ? 'font-bold' : 'text-sub'}`}>{label}</span>
-                        </li>
-                      })}
-                    </ol>
-                  </li>
-                ))}
-              </ul>
-            </article>}
-            {viewer && <PhotoViewer before={viewer.before} after={viewer.after} onClose={() => setViewer(null)} />}
-          </>}
-      </div>
-
-      <div className="flex flex-col gap-3.5">
-        <h2 className="text-lg font-bold">내 제보는 어디까지 왔나요?</h2>
-        {mine === null ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
-          : myLatest.length === 0 ? <p className="text-sm text-sub">제보를 보내면 여기에서 처리 단계를 바로 볼 수 있어요.</p>
-          : <>
-            {myLatest.map((r) => (
-              <article key={r.public_id} className="resident-card flex flex-col gap-2.5">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-bold">{plainCategory(r.ai?.category) ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
-                  <span className="shrink-0 text-xs text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
-                </div>
-                <StatusSteps status={r.status} />
-              </article>
-            ))}
-            <Link to="/my" className="grid min-h-[44px] place-items-center text-sm font-semibold underline">내 제보 모두 보기</Link>
-          </>}
-      </div>
-
-      <section aria-label="안전왕 순위" className="flex flex-col gap-3.5">
-        <h2 className="text-lg font-bold">우리 동네 안전왕</h2>
-        <article className="resident-card flex flex-col gap-3">
-          <p className="text-xs text-sub">담당자가 확인한 제보 1건에 {rank?.points_per_report ?? 10}점이에요. 제보를 보내기만 해서는 점수가 쌓이지 않아요. 점수는 순위에만 쓰이고, 포인트 교환은 준비 중이에요.</p>
-          {rankError ? <p className="text-sm text-sub">순위를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
-            : !rank ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
-            : rank.top.length === 0 ? <p className="text-sm">아직 순위가 없어요. 제보가 확인되면 첫 안전왕이 될 수 있어요.</p>
-            : <ol className="grid gap-1.5">
-              {rank.top.map((row) => (
-                <li key={`${row.rank}-${row.nickname}`} className={`flex min-h-[44px] items-center gap-2.5 rounded-xl px-2.5 ${row.is_me ? 'bg-[#ebefcb]' : ''}`}>
-                  <span className="w-6 shrink-0 text-center text-base font-bold">{row.rank}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{row.nickname}{row.is_me && <span className="ml-1.5 text-xs font-normal text-sub">(나)</span>}</span>
-                  {row.title && <span className="resident-chip shrink-0 bg-accent text-ink">{row.title}</span>}
-                  <span className="shrink-0 text-sm font-bold">{row.points}점</span>
-                </li>
-              ))}
-            </ol>}
-          {rank?.me && !rank.top.some((row) => row.is_me) && (
-            <p className="rounded-xl bg-[#ebefcb] px-3 py-2.5 text-sm">내 순위 <b>{rank.me.rank}위</b> · {rank.me.points}점 ({rank.me.count}건)</p>
-          )}
-          {rank && rank.total_players > 5 && (
-            <button type="button" onClick={() => setRankAll((v) => !v)} className="grid min-h-[44px] place-items-center text-sm font-semibold underline">
-              {rankAll ? '상위 5명만 보기' : `전체 순위 보기 (${rank.total_players}명)`}
-            </button>
-          )}
-        </article>
+        <Link to="/guide" className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-white px-3 text-sm font-bold">
+          서비스 안내 자세히 보기<img src={residentAsset('home-imgChev.svg')} alt="" />
+        </Link>
       </section>
 
-      <Link to="/map" className="flex min-h-[52px] items-center justify-between rounded-[15px] border border-line bg-white px-4 text-sm font-bold">
-        <span>지도에서 제보 위치 보기</span><img src={residentAsset('home-imgChev.svg')} alt="" />
-      </Link>
-      <Link to="/guide" className="flex min-h-[52px] items-center justify-between rounded-[15px] border border-line bg-white px-4 text-sm font-bold">
-        서비스 안내 · 포인트와 봉사시간<img src={residentAsset('home-imgChev.svg')} alt="" />
-      </Link>
-      <a href="tel:119" className="flex min-h-[48px] items-center justify-between rounded-[15px] bg-danger px-4 text-[15px] font-bold text-white">
-        <span>지금 위험하면 119</span><span className="text-[13px] underline">전화하기</span>
+      <section className="resident-card grid gap-2.5" aria-labelledby="home-ranking">
+        <h2 id="home-ranking" className="text-lg font-bold">우리 동네 안전왕</h2>
+        <p className="text-xs text-sub">담당자가 확인한 제보 1건당 {ranking?.points_per_report ?? 10}점 · 순위에만 반영</p>
+        {rankError ? <p className="text-sm text-sub">순위를 불러오지 못했어요.</p>
+          : !ranking ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
+          : ranking.top.length === 0 ? <p className="text-sm text-sub">아직 순위가 없어요.</p>
+          : <>
+            <RankingRows rows={ranking.top} />
+            {ranking.me && <p className="text-sm font-bold">내 순위 {ranking.me.rank}위 · {ranking.me.points}점</p>}
+            <button type="button" aria-haspopup="dialog" className="resident-secondary" onClick={() => setRankOpen(true)}>전체 순위 보기 <span aria-hidden="true">›</span></button>
+          </>}
+      </section>
+      {rankOpen && <RankingPopup summary={ranking} onClose={() => setRankOpen(false)} />}
+
+      <a href="tel:119" className="flex min-h-16 items-center gap-2 rounded-2xl border border-[#f4cccf] bg-[#ffefef] p-3 text-[#8d2029]">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white"><img src={residentAsset('emergency-phone.svg')} alt="" /></span>
+        <span className="min-w-0 flex-1"><strong className="block text-[15px]">지금 위험한가요?</strong><span className="block text-xs">즉시 119로 연락하세요.</span></span>
+        <strong className="shrink-0 rounded-xl bg-[#8d2029] px-2.5 py-2.5 text-xs text-white">119 전화하기</strong>
       </a>
+      {stats && <div className="flex flex-wrap justify-between gap-1 rounded-xl bg-[#ebefcb] px-3 py-2.5 text-xs font-bold">
+        <span>이번 주 우리 동네</span><span>제보 {stats.week_reports}건 · 완료 {stats.week_done}건</span>
+      </div>}
+
+      <section className="resident-card grid gap-2.5" aria-labelledby="home-status">
+        <h2 id="home-status" className="text-lg font-bold">우리 동네 제보 현황</h2>
+        {error ? <p className="text-sm text-sub">제보 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
+          : !summary ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
+          : <>
+            <h3 className="text-xs text-sub">상태별 건수</h3>
+            <ul className="grid gap-2">
+              {STATUS.map(([key, label]) => (
+                <li key={key} className="grid grid-cols-[38px_1fr_44px] items-center gap-2 text-xs font-semibold">
+                  <span>{label}</span>
+                  <span aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-[#e9eef3]">
+                    <span className="block h-full rounded-full" style={{ width: `${counts[key] / maxCount * 100}%`, background: REPORT_STATUS_COLORS[key] }} />
+                  </span>
+                  <span className="text-right">{counts[key]}건</span>
+                </li>
+              ))}
+            </ul>
+            <p className="resident-chip justify-self-start bg-[#e9eff7]">확인 대기 {summary.pending}건</p>
+            <p className="text-xs text-sub">담당자가 확인한 제보만 지도에 표시돼요.</p>
+            {summary.recent.length > 0 && <>
+              <h3 className="text-sm font-bold">최근 제보 진행 상황</h3>
+              <ul className="grid gap-2.5">
+                {summary.recent.slice(0, 3).map((report) => {
+                  const photos = pairs[report.public_id]
+                  return (
+                    <li key={report.public_id} className="grid gap-2 rounded-xl bg-[#f1f5f8] p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-sm">{reportTitle({ ai: { category: report.category }, facility_label: report.facility_label === '모름' ? null : report.facility_label })}</strong>
+                        <ReportBadge report={{ ...report, status_label: report.result_label ?? report.status_label }} />
+                      </div>
+                      <StatusSteps status={report.status} publicOnly />
+                      {photos && <>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[[photos.before, '조치 전'], [photos.after, '조치 후']].map(([src, label]) => (
+                            <figure key={label}>
+                              <img className="aspect-[1.8] w-full rounded-xl object-cover" src={src} alt={label + ' 사진'} loading="lazy" />
+                              <figcaption className="pt-1 text-[11px] text-sub">{label}</figcaption>
+                            </figure>
+                          ))}
+                        </div>
+                        <button type="button" onClick={() => setViewer(photos)} className="resident-primary text-sm">조치 사진 확인하기 <span aria-hidden="true">›</span></button>
+                      </>}
+                    </li>
+                  )
+                })}
+              </ul>
+            </>}
+          </>}
+        <Link to="/map" className="flex min-h-11 items-center justify-between rounded-xl bg-[#ebefcb] px-3 text-sm font-bold">동네 지도 보기<img src={residentAsset('home-imgChev.svg')} alt="" /></Link>
+      </section>
+      {viewer && <PhotoViewer before={viewer.before} after={viewer.after} onClose={() => setViewer(null)} />}
+
+      <section className="resident-card grid gap-2.5">
+        <h2 className="text-base font-bold">내 제보</h2>
+        {mine === null ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
+          : mine ? <>
+            <div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{reportTitle(mine)}</strong><ReportBadge report={mine} /></div>
+            <StatusSteps status={mine.status} highlight />
+          </> : <p className="text-xs text-sub">제보를 보내면 여기에서 처리 단계를 바로 볼 수 있어요.</p>}
+        <Link to="/my" className="resident-secondary">내 활동에서 자세히 보기 <span aria-hidden="true">›</span></Link>
+      </section>
     </section>
   )
 }

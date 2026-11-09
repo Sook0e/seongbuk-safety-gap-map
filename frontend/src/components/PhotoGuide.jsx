@@ -20,23 +20,23 @@ function Wall({ crack, strokeWidth }) {
 }
 
 const CASES = [
-  { ok: true, title: '이렇게', desc: '문제 부분이 가운데 칸에 크게', crack: '46,62 54,74 50,84 60,94 56,104 66,100', w: 2.4 },
+  { ok: true, title: '가운데 크게', desc: '문제 부분이 가운데 칸에 크게', crack: '46,62 54,74 50,84 60,94 56,104 66,100', w: 2.4 },
   { ok: false, title: '너무 멀어요', desc: '작게 보이면 알아보기 어려워요', crack: '58,76 61,80 59,84 62,88', w: 1 },
-  { ok: false, title: '치우쳤어요', desc: '가운데에서 벗어났어요', crack: '6,8 14,20 10,30 20,40 16,50 26,46', w: 2.4 },
+  { ok: false, title: '한쪽으로 치우쳤어요', desc: '가운데에서 벗어났어요', crack: '6,8 14,20 10,30 20,40 16,50 26,46', w: 2.4 },
 ]
 
 export default function PhotoGuide() {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
+    <div className="flex flex-col gap-2 resident-card">
       <p className="text-sm font-semibold">이렇게 찍어 주세요</p>
       <p className="text-[13px] leading-snug text-sub">사진을 가로세로 3칸씩 9칸으로 나눈다고 생각하고, 문제 부분이 가운데 빨간 칸에 오도록 맞춰 찍어 주세요.</p>
       <div className="grid grid-cols-3 gap-2">
         {CASES.map((c) => (
           <figure key={c.title} className="flex flex-col gap-1">
-            <div className={`aspect-[3/4] overflow-hidden rounded-lg border-2 ${c.ok ? 'border-brand' : 'border-line'}`}>
+            <div className={`aspect-[5/6] overflow-hidden rounded-lg border-2 ${c.ok ? 'border-brand' : 'border-line'}`}>
               <Wall crack={c.crack} strokeWidth={c.w} />
             </div>
-            <figcaption className="text-[13px] leading-snug">
+            <figcaption className="text-[11px] leading-snug">
               <span className={`font-semibold ${c.ok ? 'text-brand' : 'text-danger'}`}>{c.title}</span>
               <span className="block text-sub">{c.desc}</span>
             </figcaption>

@@ -27,6 +27,11 @@ const EXAMPLES = [
   ['흐려진 노면 표시', '횡단보도·정지선이 지워져 안 보이는 곳'],
 ]
 const MAX_PHOTOS = 4
+const DEMO_PHOTOS = [
+  { file: 'sample.jpg', label: '옹벽 균열' },
+  { file: 'sample2.jpg', label: '시설 파손' },
+  { file: 'sample3.jpg', label: '표면 균열' },
+]
 const photoSrc = (key) => `/api/photos/${key}` // 서버에 올라간 사진 (로컬은 바로, supabase는 서명 주소로 넘겨 줌)
 const FLAG_LABELS = { person: '사람 얼굴', plate: '차량 번호판', inappropriate: '부적절한 내용', off_topic: '점검과 상관없는 내용' }
 const aiDraft = (ai) => (ai && !ai.mock && ai.category ? `${plainCategory(ai.category)} 사진입니다. ${plainText(toPolite(ai.reason ?? ''))}`.trim().slice(0, 200) : '')
@@ -36,6 +41,8 @@ export default function Report() {
   const isDemo = params.get('demo') === '1'
   const navigate = useNavigate()
   const [index, setIndex] = useState(null)
+  const [demoSelection, setDemoSelection] = useState([])
+  const [photoSourcesOpen, setPhotoSourcesOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState(false)
   const [bigMap, setBigMap] = useState(false)     // 위치 지도를 크게 볼 때
   const [viewer, setViewer] = useState(null)     // 사진을 눌러 크게 볼 때 {src, title}
@@ -109,17 +116,34 @@ export default function Report() {
     setLastFiles(failed.length ? failed : null)
     if (failed.length) setError(`사진 처리 실패: ${firstError.message}`)
     setUploading(false)
+    return list.length - failed.length
   }
   const setMemo = (i, v) => setPhotos((l) => l.map((p, k) => (k === i ? { ...p, memo: v } : p)))
   const removePhoto = (i) => setPhotos((l) => l.filter((_, k) => k !== i))                    // 대표를 지우면 다음 사진이 대표가 됨
   const makeMain = (i) => setPhotos((l) => [l[i], ...l.filter((_, k) => k !== i)])           // 가장 문제가 잘 보이는 사진을 대표로
 
-  // 체험용 사진 3장 중 한 장을 골라 붙인다 (사진 고르기 → 확인 → 보내기 순서를 그대로 해 보게). 파일: frontend/public/demo/sample.jpg, sample2.jpg, sample3.jpg
-  const demoFile = (n) => (n === 1 ? 'sample.jpg' : `sample${n}.jpg`)
-  async function useDemoPhoto(n) {
-    const res = await fetch('/demo/' + demoFile(n))
-    if (!res.ok) return setError(`체험용 사진이 아직 없음 (frontend/public/demo/${demoFile(n)})`)
-    addFiles([await res.blob()])
+  function toggleDemoPhoto(file) {
+    setDemoSelection((selection) => selection.includes(file)
+      ? selection.filter((selected) => selected !== file)
+      : [...selection, file])
+  }
+
+  async function useDemoPhotos() {
+    setError('')
+    setUploading(true)
+    try {
+      const files = await Promise.all(demoSelection.map(async (file) => {
+        const response = await fetch('/demo/' + file)
+        if (!response.ok) throw new Error('체험 사진을 불러오지 못했어요.')
+        return response.blob()
+      }))
+      const added = await addFiles(files)
+      if (added === files.length) go(0)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function submit() {
@@ -139,7 +163,7 @@ export default function Report() {
       myReports.add(r.public_id)
       myReports.markSeen() // 방금 보낸 제보는 '새 소식'이 아님 → 빨간 점은 담당자가 처리할 때부터
       if (isDemo) setDemoDone(true) // 체험은 끝났다는 화면을 먼저 보여 준다 (바로 내 제보로 넘기면 화면이 갑자기 바뀐 것처럼 보임)
-      else navigate('/my')
+      else navigate(`/my/reports/${encodeURIComponent(r.public_id)}`)
     } catch (e) { sending.current = false; setError(`제보 실패: ${e.message}`) } finally { setBusy(false) } // 성공하면 화면이 넘어갈 때까지 잠가 둔다(바로 풀면 넘어가기 직전에 한 번 더 눌린다)
   }
 
@@ -160,22 +184,23 @@ export default function Report() {
     setIndex(next)
   }
   const choose = (e) => {
-    if (e.target.files.length) addFiles(e.target.files)
+    if (e.target.files.length) {
+      addFiles(e.target.files)
+      setPhotoSourcesOpen(false)
+    }
     e.target.value = ''
   }
   if (demoDone) {
     return (
       <section className="resident-screen min-h-full">
-        <ResidentHeader caption="체험 제보" title="체험이 끝났어요" />
-        <div className="resident-card grid gap-2">
-          <h2 className="text-lg font-bold">사진 고르기부터 보내기까지 해 보셨어요</h2>
-          <p className="text-sm leading-snug">실제로는 이렇게 담당자에게 전달돼요. 체험 제보는 지도와 순위에는 나오지 않고 담당자 화면에서만 확인돼요. 실제 제보는 직접 찍은 사진으로 보내 주세요.</p>
+        <ResidentHeader caption="체험용 제보" title="체험 완료" />
+        <div className="grid justify-items-center gap-2 rounded-[20px] bg-[#ebefcb] p-4 text-center">
+          <img src="/resident-final/safety-mascot.png" width="116" height="116" alt="" />
+          <h2 className="text-lg font-bold">사진 제보 체험을 마쳤어요!</h2>
+          <p className="text-sm text-sub">체험용 제보는 실제 접수되지 않아요.</p>
         </div>
-        <div className="mt-auto grid gap-2 pt-2">
-          <Link to="/report" className="resident-primary grid place-items-center">실제로 제보하기</Link>
-          <Link to="/my" className="grid min-h-[52px] place-items-center rounded-[15px] border border-sub font-bold">내 활동에서 처리 단계 보기</Link>
-          <Link to="/home" className="grid min-h-[44px] place-items-center text-sm font-semibold underline">홈으로</Link>
-        </div>
+        <Link to="/report" className="resident-primary grid place-items-center">진짜 제보하기</Link>
+        <Link to="/home" className="flex min-h-11 items-center text-sm font-bold">홈으로 돌아가기</Link>
       </section>
     )
   }
@@ -193,8 +218,8 @@ export default function Report() {
           <p className="text-center text-xs text-white/80">위치를 바꾸려면 닫고 "위치 수정"을 눌러 주세요.</p>
         </div>
       )}
-      <ResidentHeader caption={photo ? '‹ 제보하기 / 2단계' : '‹ 제보하기 / 1단계'}
-        title={photo ? `사진 ${index + 1} 확인하기` : '사진으로 제보하기'} />
+      <ResidentHeader caption={photo ? '제보하기 / 2단계' : isDemo ? '체험용 사진 제보 / 1단계' : '위험한 곳을 발견했나요?'}
+        title={photo ? `사진 ${index + 1} 확인하기` : isDemo ? '체험 사진 고르기' : '사진으로 제보하기'} />
       {photo ? <>
         <div className="resident-card grid gap-2">
           <div className="flex items-center justify-between text-sm font-bold">
@@ -254,40 +279,49 @@ export default function Report() {
           <p className="text-xs text-sub">제보와 함께 이 브라우저의 식별번호 {myReports.clientCode()}{myReports.nickname() && ` · 별명 ${myReports.nickname()}`}가 저장돼요.</p>
         </>}
       </> : <>
-        <div className="rounded-[20px] bg-[#ebefcb] p-3.5">
-          <h2 className="text-lg font-bold">이런 걸 찍어 주세요</h2>
-          <p className="my-2 text-sm text-sub">위험한 곳과 주변이 잘 보이도록<br />안전한 거리에서 촬영해 주세요.</p>
-          <div className="grid grid-cols-2 gap-2">
-            {EXAMPLES.map(([title, desc]) => <div key={title} className="rounded-xl bg-white p-2.5">
-              <h3 className="text-[13px] font-bold">{title}</h3><p className="text-xs text-sub">{desc}</p>
-            </div>)}
-          </div>
-        </div>
-        <PhotoGuide />
-        <div className="resident-card grid gap-2">
-          <h2 className="text-lg font-bold">사진 추가</h2>
-          <p className="text-sm text-sub">여러 장을 한 번에 고를 수 있어요. 최대 {MAX_PHOTOS}장</p>
-          {isDemo ? <div className="grid gap-2">
-              <p className="text-sm font-semibold">체험용 사진 중 한 장을 골라 주세요</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((n) => (
-                  <button key={n} type="button" onClick={() => useDemoPhoto(n)} disabled={locked || photos.length > 0} aria-label={`체험용 사진 ${n} 고르기`}
-                    className="overflow-hidden rounded-xl border border-line disabled:opacity-45">
-                    <img src={`/demo/${demoFile(n)}`} alt="" className="h-[96px] w-full object-cover" />
-                  </button>
-                ))}
-              </div>
+        {!isDemo && <>
+          <div className="rounded-[20px] bg-[#ebefcb] p-3.5">
+            <h2 className="text-lg font-bold">이런 걸 찍어 주세요</h2>
+            <p className="my-2 text-sm text-sub">위험한 곳과 주변이 잘 보이도록<br />안전한 거리에서 촬영해 주세요.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {EXAMPLES.map(([title, desc]) => <div key={title} className="rounded-xl bg-white p-2.5">
+                <h3 className="text-[13px] font-bold">{title}</h3><p className="text-xs text-sub">{desc}</p>
+              </div>)}
             </div>
-            : <div className="grid grid-cols-2 gap-2">
-              <label className="resident-primary grid cursor-pointer place-items-center text-center text-sm focus-within:outline">사진 찍기
+          </div>
+          <PhotoGuide />
+          <div className="resident-card grid gap-2">
+            <h2 className="text-lg font-bold">사진 추가</h2>
+            <p className="text-sm text-sub">여러 장을 한 번에 고를 수 있어요. 최대 {MAX_PHOTOS}장</p>
+            <button type="button" onClick={() => setPhotoSourcesOpen((open) => !open)}
+              aria-expanded={photoSourcesOpen} disabled={locked || photos.length >= MAX_PHOTOS} className="resident-primary text-sm">사진 찍기 · 고르기</button>
+            {photoSourcesOpen && <div className="grid grid-cols-2 gap-2">
+              <label className="resident-secondary cursor-pointer focus-within:outline">사진 찍기
                 <input type="file" accept="image/*" capture="environment" disabled={locked || photos.length >= MAX_PHOTOS} onChange={choose} className="sr-only" />
               </label>
-              <label className="resident-primary grid cursor-pointer place-items-center text-center text-sm focus-within:outline">앨범에서 고르기
+              <label className="resident-secondary cursor-pointer focus-within:outline">앨범에서 고르기
                 <input type="file" accept="image/*" multiple disabled={locked || photos.length >= MAX_PHOTOS} onChange={choose} className="sr-only" />
               </label>
             </div>}
-          <p className="text-xs text-sub">얼굴이나 차량 번호판이 나오지 않도록 찍어 주세요.</p>
-        </div>
+            <p className="text-xs text-sub">얼굴이나 차량 번호판이 나오지 않도록 찍어 주세요.</p>
+          </div>
+        </>}
+        {isDemo && photos.length === 0 && <>
+          <p className="text-sm text-sub">체험 사진을 여러 장 고를 수 있어요.</p>
+          {DEMO_PHOTOS.map(({ file, label }) => {
+            const selected = demoSelection.includes(file)
+            return <button key={file} type="button" aria-pressed={selected} disabled={locked} onClick={() => toggleDemoPhoto(file)}
+              className={`resident-card flex items-center gap-2.5 p-2.5 text-left text-sm font-bold ${selected ? '!border-[#5276ae] !bg-[#e8effa]' : ''}`}>
+              <span aria-hidden="true" className={`grid size-[22px] shrink-0 place-items-center rounded-lg border ${selected ? 'border-[#254c85] bg-[#254c85] text-white' : 'border-[#a8bbd4] bg-white'}`}>{selected && '✓'}</span>
+              <img src={`/demo/${file}`} alt="" className="aspect-[122/82] w-[38%] max-w-[122px] rounded-xl object-cover" />
+              {label}
+            </button>
+          })}
+          <p className="text-sm font-bold">{demoSelection.length}장 선택됨</p>
+          <button type="button" onClick={useDemoPhotos} disabled={locked || demoSelection.length === 0} className="resident-primary text-sm">
+            {demoSelection.length ? `사진 ${demoSelection.length}장 확인하기` : '사진 확인하기'}
+          </button>
+        </>}
         {photos.length > 0 && <div className="resident-card grid gap-2">
           <h2 className="font-bold">선택한 사진 {photos.length}장</h2>
           {draftBack && <p className="text-xs text-sub">쓰던 제보를 불러왔어요.</p>}
@@ -318,8 +352,8 @@ export default function Report() {
               ? <button type="button" disabled={locked} onClick={() => go(index + 1)} className="resident-primary">다음 사진</button>
               : <button type="button" disabled={locked} onClick={submit} className="resident-primary">{busy ? '보내는 중…' : `제보 보내기 · ${photos.length}장`}</button>}
           </div>
-        </> : <button type="button" disabled={locked || !photos.length} onClick={() => go(0)} className="resident-primary">
-          {photos.length ? `사진 ${photos.length}장 확인하기` : '사진 확인하기'}
+        </> : photos.length > 0 && <button type="button" disabled={locked} onClick={() => go(0)} className="resident-primary">
+          사진 {photos.length}장 확인하기
         </button>}
       </div>
     </section>
