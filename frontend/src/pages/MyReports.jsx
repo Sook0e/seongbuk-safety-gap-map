@@ -1,5 +1,6 @@
 import ResidentHeader, { residentAsset } from '../components/ResidentHeader.jsx'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import BeforeAfter from '../components/BeforeAfter.jsx'
 import ClientIdBox from '../components/ClientIdBox.jsx'
 import PhotoModal from '../components/PhotoModal.jsx'
@@ -7,6 +8,8 @@ import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
 import { formatTaken } from '../lib/exif.js'
 import { myReports } from '../lib/myReports.js'
+import { dateTimeText } from '../lib/time.js'
+import { plainCategory } from '../lib/labels.js'
 
 // 주민 4 내 제보: 상태 진행, 조치 전·후 비교, 조치 결과 확인(고쳐졌어요/아직 그대로예요), 재발 안내, 처리 이력, 담당 부서 메모.
 // 이 화면을 열면 '확인한 시각'을 저장해 하단바 빨간 점이 꺼진다.
@@ -20,6 +23,18 @@ export default function MyReports() {
   const [error, setError] = useState('')
   const [voteMsg, setVoteMsg] = useState({})
   const loaded = useRef(false)
+  const [spots, setSpots] = useState(null) // 학생 활동 카드: 지도 데이터로 센 값 {recheck, crowded}
+  useEffect(() => {
+    api.reportsMap().then(({ features }) => {
+      const cells = new Map() // 약 200m 칸으로 나눠 제보가 3건 이상 몰린 곳을 센다
+      features.forEach(({ geometry: { coordinates: [lon, lat] } }) => { const k = `${Math.round(lat / 0.002)}:${Math.round(lon / 0.002)}`; cells.set(k, (cells.get(k) ?? 0) + 1) })
+      setSpots({ recheck: features.filter(({ properties }) => properties.recheck).length, crowded: [...cells.values()].filter((n) => n >= 3).length })
+    }).catch(() => setSpots(null))
+  }, [])
+  const [score, setScore] = useState(undefined) // 내 점수·순위 (undefined: 불러오는 중, null: 아직 순위 없음)
+  useEffect(() => {
+    api.ranking(1, myReports.clientKey()).then((r) => setScore(r.me ?? null)).catch(() => setScore(null))
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -78,17 +93,48 @@ export default function MyReports() {
   const timeline = (r) => r.history
     .filter((h) => h.from_status !== h.to_status || (h.note ?? '').includes('재발'))
     .map((h) => ({ at: h.at, text: h.from_status === h.to_status ? h.note : h.to_status_label }))
+  // 단계별 시각: 접수는 접수한 때, 나머지는 그 상태로 처음 바뀐 때 (건너뛴 단계는 비어 있음)
+  const stepTimes = (r) => Object.fromEntries(['received', 'review', 'action', 'done'].map((k) => [k, k === 'received' ? r.created_at : r.history.find((h) => h.to_status === k)?.at]))
   const chip = (st, notTarget) => (notTarget ? 'bg-gray-200 text-sub' : st === 'done' ? 'bg-[#EBEFCB] text-brand' : st === 'received' ? 'bg-gray-200 text-ink' : 'bg-amber-100 text-amber-800')
   return (
     <section className="resident-screen">
       <PhotoModal src={viewer?.src} title={viewer?.title} onClose={() => setViewer(null)} />
-      <ResidentHeader caption="접수부터 완료까지" title="내 제보" />
+      <ResidentHeader caption="내 제보 · 내 점수 · 학생 활동" title="내 활동" />
       <div className="relative min-h-[129px] overflow-hidden rounded-[20px] bg-[#ebefcb] p-4">
         <img src={residentAsset('my-img.png')} alt="" className="absolute right-3 top-2 size-[112px] object-contain" />
         <p className="relative text-[13px] font-semibold text-sub">내가 보낸 제보</p>
         <p className="relative my-2 text-[28px] font-bold">{list.length}건</p>
         <p className="relative max-w-[66%] text-xs text-sub">이 브라우저에서 보낸 제보를 확인해요.</p>
       </div>
+      <Link to="/guide" className="resident-card flex min-h-[64px] items-center justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-[13px] font-semibold text-sub">내 점수</span>
+          {score ? <span className="block text-base font-bold">{score.points}점 · {score.rank}위 <span className="text-xs font-normal text-sub">(확인된 제보 {score.count}건)</span></span>
+            : <span className="block text-sm">{score === undefined ? '불러오는 중이에요.' : '담당자가 확인한 제보가 생기면 점수가 쌓여요.'}</span>}
+        </span>
+        <span className="shrink-0 text-xs font-bold underline">서비스 안내 · 포인트와 봉사시간</span>
+      </Link>
+      <section aria-label="학생이 할 수 있는 일" className="rounded-[20px] bg-[#ebefcb] p-3.5">
+        <h2 className="text-base font-bold">학생이 할 수 있는 일</h2>
+        <p className="mt-1 text-xs text-sub">모인 제보 중에서 학생이 직접 도울 수 있는 일을 골라 두었어요.</p>
+        <ul className="mt-3 grid gap-2.5">
+          <li className="rounded-xl bg-white p-3">
+            <h3 className="text-sm font-bold">조치 후 재확인</h3>
+            <p className="mt-0.5 text-xs leading-snug text-sub">고쳐졌다고 한 곳에 다시 가서 사진으로 확인해요.</p>
+            <Link to="/map?filter=recheck" className="mt-1 grid min-h-[44px] items-center text-sm font-bold underline">{spots ? `재확인이 필요한 곳 ${spots.recheck}곳 보기` : '지도에서 재확인이 필요한 곳 보기'}</Link>
+          </li>
+          <li className="rounded-xl bg-white p-3">
+            <h3 className="text-sm font-bold">봉사 순찰</h3>
+            <p className="mt-0.5 text-xs leading-snug text-sub">제보가 적은 골목을 돌며 위험한 곳을 찾아요.</p>
+            <Link to="/report" className="mt-1 grid min-h-[44px] items-center text-sm font-bold underline">발견하면 제보하기</Link>
+          </li>
+          <li className="rounded-xl bg-white p-3">
+            <h3 className="text-sm font-bold">주의 안내</h3>
+            <p className="mt-0.5 text-xs leading-snug text-sub">제보가 몰린 곳에 미끄럼·통행 주의 안내를 해요. 구청이 허가한 범위 안에서만 해요.</p>
+            <Link to="/map" className="mt-1 grid min-h-[44px] items-center text-sm font-bold underline">{spots ? `제보가 많은 곳 ${spots.crowded}곳 보기` : '지도에서 제보가 많은 곳 보기'}</Link>
+          </li>
+        </ul>
+      </section>
       {!list.length && <p className="resident-card text-sm text-sub">아직 이 브라우저에서 보낸 제보가 없어요.</p>}
       {list.map((r) => {
         const ac = r.aftercare ?? { fixed: 0, not_fixed: 0, recurrence: null }
@@ -100,13 +146,13 @@ export default function MyReports() {
             <div className="flex flex-col items-start gap-2">
               <span className={`rounded-full px-2.5 py-0.5 text-[13px] font-semibold ${chip(r.status, r.not_target)}`}>{r.not_target ? '처리 대상 아님' : (r.status_label ?? r.status)}</span>
               <div className="flex flex-col gap-0.5">
-                <span className="text-lg font-bold leading-snug">{r.ai?.category ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
+                <span className="text-lg font-bold leading-snug">{plainCategory(r.ai?.category) ?? '분류 없음'}{r.facility_label && ` · ${r.facility_label}`}</span>
                 <span className="text-[13px] text-sub">{new Date(r.created_at).toLocaleDateString('ko-KR')} · 접수번호 {r.public_id}</span>
               </div>
             </div>
             {r.not_target
               ? <p className="rounded-lg bg-page px-3 py-2.5 text-sm leading-normal">담당자가 확인한 결과, 처리 대상이 아니라고 판단했습니다.{r.dept_note ? ` 이유: ${r.dept_note}` : ' 이유는 담당 부서에 문의해 주세요.'}</p>
-              : <><StatusSteps status={r.status} /><p className="text-sm font-medium text-brand">{progress(r)}</p></>}
+              : <><StatusSteps status={r.status} times={stepTimes(r)} /><p className="text-sm font-medium text-brand">{progress(r)}</p></>}
             {ac.recurrence && (
               <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-sm leading-normal">같은 곳에서 조치된 지 {ac.recurrence.days_after_done}일 만에 다시 제보된 곳이에요. 재발로 담당자에게 전달됩니다.</p>
             )}
@@ -152,7 +198,7 @@ export default function MyReports() {
                 <summary className="cursor-pointer py-1 font-medium text-brand">처리 이력 보기</summary>
                 <ol className="mt-1.5 flex flex-col gap-1 border-l-2 border-line pl-3">
                   {timeline(r).map((t, i) => (
-                    <li key={i} className="text-[13px] leading-snug"><span className="text-sub">{new Date(t.at).toLocaleDateString('ko-KR')}</span> · {t.text}</li>
+                    <li key={i} className="text-[13px] leading-snug"><span className="text-sub">{dateTimeText(t.at)}</span> · {t.text}</li>
                   ))}
                 </ol>
               </details>

@@ -26,6 +26,7 @@ export const api = {
   gaps: () => request('/api/gaps'),
   zones: () => request('/api/zones'), // 보호구역 경계 (경계 있는 곳 MultiPolygon, 없는 곳 Point)
   reportsMap: () => request('/api/reports/map'),
+  reportsSummary: (limit = 5) => request(`/api/reports/summary?limit=${limit}`), // 홈 제보 현황: 확인 대기 건수(숫자만), 상태별 건수, 최근 확인된 제보
 
   // 사진: 저장 + AI 분류. 응답 { key, url, ai: { category, confidence, alternatives, reason, mock } }
   uploadPhoto: (blob, { classify = true } = {}) => {
@@ -42,6 +43,7 @@ export const api = {
   feedback: (publicId, kind, clientKey) => request(`/api/reports/${publicId}/feedback`, json('POST', { kind, client_key: clientKey })), // 조치 완료 뒤 고쳐졌어요/아직 그대로예요
   report: (publicId) => request(`/api/reports/${publicId}`),
   confirm: (publicId) => request(`/api/reports/${publicId}/confirm`, { method: 'POST' }), // 나도 봤어요 +1
+  ranking: (limit = 5, clientKey) => request(`/api/ranking?limit=${limit}${clientKey ? `&client_key=${encodeURIComponent(clientKey)}` : ''}`), // 안전왕 순위(홈). 식별값은 내 순위를 찾는 데만 쓴다
   stats: () => request('/api/stats'), // 첫 화면 '이번 주 제보·조치 완료'
 
   // 관리자
