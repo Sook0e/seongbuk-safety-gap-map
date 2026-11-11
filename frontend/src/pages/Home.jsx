@@ -6,10 +6,7 @@ import ProcessPicture from '../components/ProcessPicture.jsx'
 import StatusSteps from '../components/StatusSteps.jsx'
 import { api } from '../lib/api.js'
 import { myReports } from '../lib/myReports.js'
-import { REPORT_STATUS_COLORS } from '../lib/reportStatus.js'
 import { ReportBadge, reportTitle } from './MyReports.jsx'
-
-const STATUS = [['received', '접수'], ['review', '검토'], ['action', '조치'], ['done', '완료']]
 
 function RankingRows({ rows }) {
   return (
@@ -82,14 +79,11 @@ export default function Home() {
         .filter((row) => row.photo_url && row.after_photo_url)
         .map((row) => [row.public_id, { before: row.photo_url, after: row.after_photo_url }])))).catch(() => {})
     }).catch(() => setError(true))
-    api.stats().then(setStats).catch(() => {})
+    api.stats().then(setStats).catch(() => setStats(false))
     const clientKey = myReports.clientKey()
     api.myReports(myReports.ids(), clientKey).then((rows) => setMine(rows.find((row) => !row.not_target) ?? false)).catch(() => setMine(false))
     api.ranking(3, clientKey).then(setRanking).catch(() => setRankError(true))
   }, [])
-
-  const counts = summary && { received: summary.pending, review: summary.review, action: summary.action, done: summary.done }
-  const maxCount = counts ? Math.max(1, ...Object.values(counts)) : 1
 
   return (
     <section className="resident-screen">
@@ -134,60 +128,37 @@ export default function Home() {
         <span className="min-w-0 flex-1"><strong className="block text-[15px]">지금 위험한가요?</strong><span className="block text-xs">즉시 119로 연락하세요.</span></span>
         <strong className="shrink-0 rounded-xl bg-[#8d2029] px-2.5 py-2.5 text-xs text-white">119 전화하기</strong>
       </a>
-      {stats && <div className="flex flex-wrap justify-between gap-1 rounded-xl bg-[#ebefcb] px-3 py-2.5 text-xs font-bold">
-        <span>이번 주 우리 동네</span><span>제보 {stats.week_reports}건 · 완료 {stats.week_done}건</span>
-      </div>}
-
-      <section className="resident-card grid gap-2.5" aria-labelledby="home-status">
-        <h2 id="home-status" className="text-lg font-bold">우리 동네 제보 현황</h2>
-        {error ? <p className="text-sm text-sub">제보 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
-          : !summary ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
-          : <>
-            <h3 className="text-xs text-sub">상태별 건수</h3>
-            <ul className="grid gap-2">
-              {STATUS.map(([key, label]) => (
-                <li key={key} className="grid grid-cols-[38px_1fr_44px] items-center gap-2 text-xs font-semibold">
-                  <span>{label}</span>
-                  <span aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-[#e9eef3]">
-                    <span className="block h-full rounded-full" style={{ width: `${counts[key] / maxCount * 100}%`, background: REPORT_STATUS_COLORS[key] }} />
-                  </span>
-                  <span className="text-right">{counts[key]}건</span>
+      <details className="weekly-news group overflow-hidden rounded-2xl border border-line bg-white">
+        <summary className="flex min-h-[46px] cursor-pointer list-none items-center gap-2 bg-[#ebefcb] px-3 py-2.5 text-brand">
+          <span className="min-w-0 flex-1 text-xs font-bold">이번 주 우리 동네</span>
+          <span className="shrink-0 text-[11px]">
+            {stats ? `제보 ${stats.week_reports}건 · 완료 ${stats.week_done}건` : stats === false ? '집계 확인 불가' : '불러오는 중'}
+          </span>
+          <img src={residentAsset('weekly-chevron-up.svg')} alt="" className="rotate-180 group-open:rotate-0" />
+        </summary>
+        <section className="grid gap-2 p-3.5" aria-labelledby="neighborhood-news">
+          <p className="text-[11px] text-sub">최근 처리 소식 · 전체 기간</p>
+          <h2 id="neighborhood-news" className="text-sm font-bold">최근 제보 진행 상황</h2>
+          {error ? <p role="alert" className="text-sm text-sub">제보 현황을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.</p>
+            : !summary ? <p role="status" className="text-sm text-sub">불러오는 중이에요.</p>
+            : summary.recent.length === 0 ? <p className="text-xs text-sub">아직 담당자가 확인한 제보가 없어요.</p>
+            : <ul className="grid gap-2.5">
+              {summary.recent.slice(0, 3).map((report) => (
+                <li key={report.public_id} className="grid gap-2.5 rounded-2xl bg-[#f3f6f9] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-sm">{reportTitle({ ai: { category: report.category }, facility_label: report.facility_label === '모름' ? null : report.facility_label })}</strong>
+                    <ReportBadge report={{ ...report, status_label: report.result_label ?? report.status_label }} />
+                  </div>
+                  <StatusSteps status={report.status} publicOnly />
+                  {pairs[report.public_id] && <button type="button" onClick={() => setViewer(pairs[report.public_id])} className="resident-primary !min-h-11 text-xs">
+                    조치 사진 확인하기 <span aria-hidden="true">›</span>
+                  </button>}
                 </li>
               ))}
-            </ul>
-            <p className="resident-chip justify-self-start bg-[#e9eff7]">확인 대기 {summary.pending}건</p>
-            <p className="text-xs text-sub">담당자가 확인한 제보만 지도에 표시돼요.</p>
-            {summary.recent.length > 0 && <>
-              <h3 className="text-sm font-bold">최근 제보 진행 상황</h3>
-              <ul className="grid gap-2.5">
-                {summary.recent.slice(0, 3).map((report) => {
-                  const photos = pairs[report.public_id]
-                  return (
-                    <li key={report.public_id} className="grid gap-2 rounded-xl bg-[#f1f5f8] p-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <strong className="text-sm">{reportTitle({ ai: { category: report.category }, facility_label: report.facility_label === '모름' ? null : report.facility_label })}</strong>
-                        <ReportBadge report={{ ...report, status_label: report.result_label ?? report.status_label }} />
-                      </div>
-                      <StatusSteps status={report.status} publicOnly />
-                      {photos && <>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[[photos.before, '조치 전'], [photos.after, '조치 후']].map(([src, label]) => (
-                            <figure key={label}>
-                              <img className="aspect-[1.8] w-full rounded-xl object-cover" src={src} alt={label + ' 사진'} loading="lazy" />
-                              <figcaption className="pt-1 text-[11px] text-sub">{label}</figcaption>
-                            </figure>
-                          ))}
-                        </div>
-                        <button type="button" onClick={() => setViewer(photos)} className="resident-primary text-sm">조치 사진 확인하기 <span aria-hidden="true">›</span></button>
-                      </>}
-                    </li>
-                  )
-                })}
-              </ul>
-            </>}
-          </>}
-        <Link to="/map" className="flex min-h-11 items-center justify-between rounded-xl bg-[#ebefcb] px-3 text-sm font-bold">동네 지도 보기<img src={residentAsset('home-imgChev.svg')} alt="" /></Link>
-      </section>
+            </ul>}
+          <Link to="/map" className="flex min-h-11 items-center justify-between rounded-xl bg-[#ebefcb] px-3 text-sm font-bold">동네 지도 보기<img src={residentAsset('home-imgChev.svg')} alt="" /></Link>
+        </section>
+      </details>
       {viewer && <PhotoViewer before={viewer.before} after={viewer.after} onClose={() => setViewer(null)} />}
 
       <section className="resident-card grid gap-2.5">

@@ -7,6 +7,7 @@ import { api } from '../lib/api.js'
 import { plainCategory, plainText, PLAIN_CATEGORIES } from '../lib/labels.js'
 import { addBaseLayer } from '../lib/map.js'
 import PhotoViewer from '../components/PhotoViewer.jsx'
+import ReportTotalsPopup from '../components/ReportTotalsPopup.jsx'
 import { myReports } from '../lib/myReports.js'
 import { groupPoints, MAX_CLUSTER_ZOOM } from '../lib/cluster.js'
 import { REPORT_STATUS_COLORS as COLORS } from '../lib/reportStatus.js'
@@ -33,6 +34,7 @@ export default function MapPage() {
   const [selected, setSelected] = useState(null)
   const [confirmMsg, setConfirmMsg] = useState('')
   const [shots, setShots] = useState({ before: null, after: null, memo: null, loaded: false }) // 선택한 제보의 조치 전·후 사진 (눌렀을 때 불러옴)
+  const [totalsOpen, setTotalsOpen] = useState(false)
   const [viewer, setViewer] = useState(false)
   const [view, setView] = useState({ zoom: 14, bounds: null }) // 확대·이동할 때마다 갱신 → 묶음과 '이 지역 N건'을 다시 계산
 
@@ -158,6 +160,8 @@ export default function MapPage() {
         <h2 className="text-sm font-bold">이 지역 제보 {inView}건</h2>
         <p className="mt-1 text-xs text-sub">{shown.length === 0 ? '고른 조건에 맞는 제보가 없어요. 다른 상태나 유형을 눌러 보세요.' : '원 안 숫자는 제보 수, 라임색 링은 완료 비율이에요. 묶음을 누르거나 지도를 확대하면 개별 제보를 볼 수 있어요.'}</p>
       </article>}
+      <button type="button" aria-haspopup="dialog" onClick={() => setTotalsOpen(true)} className="resident-secondary">전체 누적 제보 현황 보기 <span aria-hidden="true">›</span></button>
+      {totalsOpen && <ReportTotalsPopup onClose={() => setTotalsOpen(false)} />}
       {viewer && <PhotoViewer before={shots.before} after={shots.after} onClose={() => setViewer(false)} />}
       {p && (
         <div className="resident-card flex flex-col gap-2.5">
