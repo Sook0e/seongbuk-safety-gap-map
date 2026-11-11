@@ -648,3 +648,5 @@ button:not(:disabled),select{
 .admin-pager button.is-current { background: #001a47; color: #fff; font-weight: 700; }
 .admin-pager button:disabled { opacity: .35; }
 @media (max-width: 767px) { .admin-list-table td[data-label="선택"] { display: none; } }
+
+.weekly-news > summary::-webkit-details-marker { display: none; }
